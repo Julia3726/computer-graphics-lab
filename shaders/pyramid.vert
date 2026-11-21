@@ -2,9 +2,11 @@
 
 layout(location = 0) in vec3 in_position;
 layout(location = 1) in vec3 in_normal;
+layout(location = 2) in vec2 in_uv;
 
 layout(location = 0) out vec3 world_position;
 layout(location = 1) out vec3 normal;
+layout(location = 2) out vec2 uv;
 
 layout(set = 0, binding = 0) uniform SceneUniforms {
     mat4 view;
@@ -25,10 +27,13 @@ layout(push_constant) uniform VisualizationPushConstants {
     mat4 model;
     vec4 color;
     float enabled;
+    float sampling_effect_enabled;
+    float time;
 } visualization;
 
 void main() {
     vec4 position;
+    uv = in_uv;
 
     if (visualization.enabled > 0.5) {
         position = visualization.model * vec4(in_position, 1.0);
@@ -37,7 +42,7 @@ void main() {
     } else {
         position = model_uniforms.model * vec4(in_position, 1.0);
         world_position = position.xyz;
-        normal = normalize(mat3(model_uniforms.model) * in_normal);
+        normal = normalize(transpose(inverse(mat3(model_uniforms.model))) * in_normal);
     }
 
     gl_Position =

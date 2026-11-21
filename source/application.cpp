@@ -14,10 +14,12 @@
 #include <imgui.h>
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
+#include "lodepng.h"
 
 struct Vertex {
     glm::vec3 position;
     glm::vec3 normal;
+	glm::vec2 uv;
 };
 
 struct SceneUniforms {
@@ -45,6 +47,7 @@ struct SpotLight {
 struct LightLineVertex {
     glm::vec3 position;
     glm::vec3 normal;
+	glm::vec2 uv;
 };
 
 struct ModelUniforms {
@@ -52,6 +55,12 @@ struct ModelUniforms {
     glm::vec4 albedo;				// основной цвет материала
     glm::vec4 specular_color;		// цвет блика
     float specular_coefficient;	// насколько блик концентрированный
+};
+
+struct LoadedPng {
+    unsigned width = 0;
+    unsigned height = 0;
+    std::vector<unsigned char> pixels;
 };
 
 glm::vec3 calculate_normal(
@@ -68,29 +77,29 @@ glm::vec3 calculate_normal(
 }
 
 Vertex vertices[] = {
-    {{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}},
-    {{ 0.0f,  0.5f,  0.0f}, {0.0f, 0.0f, 0.0f}},
-    {{ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}},
+    {{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
+    {{ 0.0f,  0.5f,  0.0f}, {0.0f, 0.0f, 0.0f}, {0.5f, 0.0f}},
+    {{ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f}},
 
-    {{ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}},
-    {{ 0.0f,  0.5f,  0.0f}, {0.0f, 0.0f, 0.0f}},
-    {{ 0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 0.0f}},
+    {{ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
+    {{ 0.0f,  0.5f,  0.0f}, {0.0f, 0.0f, 0.0f}, {0.5f, 0.0f}},
+    {{ 0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f}},
 
-    {{ 0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 0.0f}},
-    {{ 0.0f,  0.5f,  0.0f}, {0.0f, 0.0f, 0.0f}},
-    {{-0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 0.0f}},
+    {{ 0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
+    {{ 0.0f,  0.5f,  0.0f}, {0.0f, 0.0f, 0.0f}, {0.5f, 0.0f}},
+    {{-0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f}},
 
-    {{-0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 0.0f}},
-    {{ 0.0f,  0.5f,  0.0f}, {0.0f, 0.0f, 0.0f}},
-    {{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}},
+    {{-0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
+    {{ 0.0f,  0.5f,  0.0f}, {0.0f, 0.0f, 0.0f}, {0.5f, 0.0f}},
+    {{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f}},
 
-    {{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}},
-    {{ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}},
-    {{ 0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 0.0f}},
+    {{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+    {{ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+    {{ 0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f}},
 
-    {{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}},
-    {{ 0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 0.0f}},
-    {{-0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 0.0f}},
+    {{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+    {{ 0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f}},
+    {{-0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
 };
  
 const uint32_t indices[] = {
@@ -154,9 +163,31 @@ VmaAllocation vertex_buffer_allocation = VK_NULL_HANDLE;
 VkBuffer index_buffer = VK_NULL_HANDLE; 
 VmaAllocation index_buffer_allocation = VK_NULL_HANDLE; 
 
+VkImage albedo_texture_image = VK_NULL_HANDLE;
+VmaAllocation albedo_texture_allocation = VK_NULL_HANDLE;
+VkImageView albedo_texture_view = VK_NULL_HANDLE;
+VkSampler albedo_texture_sampler = VK_NULL_HANDLE;
+
+VkImage second_albedo_texture_image = VK_NULL_HANDLE;
+VmaAllocation second_albedo_texture_allocation = VK_NULL_HANDLE;
+VkImageView second_albedo_texture_view = VK_NULL_HANDLE;
+
+VkImage black_fallback_texture_image = VK_NULL_HANDLE;
+VmaAllocation black_fallback_texture_allocation = VK_NULL_HANDLE;
+VkImageView black_fallback_texture_view = VK_NULL_HANDLE;
+
+VkImage specular_texture_image = VK_NULL_HANDLE;
+VmaAllocation specular_texture_allocation = VK_NULL_HANDLE;
+VkImageView specular_texture_view = VK_NULL_HANDLE;
+
+VkImage emissive_texture_image = VK_NULL_HANDLE;
+VmaAllocation emissive_texture_allocation = VK_NULL_HANDLE;
+VkImageView emissive_texture_view = VK_NULL_HANDLE;
+
+VkBuffer texture_staging_buffer = VK_NULL_HANDLE;
+VmaAllocation texture_staging_allocation = VK_NULL_HANDLE;
+
 SceneUniforms* scene_uniform_buffer_memory = nullptr;
-ModelUniforms* model_uniform_buffer_memory = nullptr;
-ModelUniforms* model_uniform_buffer_2_memory = nullptr;
 
 VkBuffer scene_uniform_buffer = VK_NULL_HANDLE;
 VmaAllocation scene_uniform_buffer_allocation = VK_NULL_HANDLE;
@@ -169,11 +200,21 @@ VkBuffer spot_light_buffer;
 VmaAllocation spot_light_buffer_allocation;
 SpotLight* spot_light_buffer_memory;
 
-VkBuffer model_uniform_buffer = VK_NULL_HANDLE;
-VmaAllocation model_uniform_buffer_allocation = VK_NULL_HANDLE;
+VkDeviceSize model_uniform_stride = 0;
 
-VkBuffer model_uniform_buffer_2 = VK_NULL_HANDLE;
-VmaAllocation model_uniform_buffer_2_allocation = VK_NULL_HANDLE;
+VkBuffer dynamic_model_uniform_buffer = VK_NULL_HANDLE;
+VmaAllocation dynamic_model_uniform_buffer_allocation = VK_NULL_HANDLE;
+unsigned char* dynamic_model_uniform_buffer_memory = nullptr;
+
+ModelUniforms& get_dynamic_model_uniform(uint32_t model_index) {
+    return *reinterpret_cast<ModelUniforms*>(
+        dynamic_model_uniform_buffer_memory +
+        model_uniform_stride * model_index
+    );
+}
+
+
+bool sampling_effect_enabled = false; 
 
 VkBuffer light_visualization_vertex_buffer;
 VmaAllocation light_visualization_vertex_buffer_allocation;
@@ -212,7 +253,7 @@ glm::vec3 pyramid_rotation = glm::vec3(0.0f);
 glm::vec3 animated_rotation = glm::vec3(0.0f);
 glm::vec3 pyramid_scale = glm::vec3(1.0f);
 
-glm::vec3 pyramid_albedo = glm::vec3(0.8f, 0.3f, 0.2f);
+glm::vec3 pyramid_albedo = glm::vec3(0.85f, 0.78f, 0.64f);
 glm::vec3 pyramid_specular_color = glm::vec3(1.0f, 1.0f, 1.0f);
 float pyramid_specular_coefficient = 32.0f;
 
@@ -231,7 +272,7 @@ float camera_fov = 60.0f;									// угол обзора
 
 glm::vec3 second_pyramid_position = glm::vec3(1.5f, 0.0f, -1.0f);
 
-glm::vec3 second_pyramid_albedo = glm::vec3(0.2f, 0.4f, 0.8f);
+glm::vec3 second_pyramid_albedo = glm::vec3(0.45f, 0.28f, 0.16f);
 glm::vec3 second_pyramid_specular_color = glm::vec3(1.0f, 1.0f, 1.0f);
 float second_pyramid_specular_coefficient = 8.0f;
 
@@ -246,10 +287,13 @@ glm::vec3 point_light_position = glm::vec3(2.0f, 2.0f, 2.0f);
 glm::vec3 point_light_color = glm::vec3(1.0f, 1.0f, 1.0f);
 float point_light_intensity = 5.0f;
 
+int pyramid_texture_index = 0;
+int second_pyramid_texture_index = 1;
+
 std::vector<SpotLight> spot_lights = {
     {
-        glm::vec4(0.0f, 3.0f, 2.0f, 1.0f),
-        glm::vec4(0.0f, -1.0f, 0.0f, 0.0f),
+        glm::vec4(1.3f, 1.0f, -0.5f, 1.0f),
+		glm::vec4(-0.6f, -0.8f, 0.0f, 0.0f),
         glm::vec4(1.0f, 1.0f, 1.0f, 5.0f),
         glm::vec4(
             glm::radians(15.0f),
@@ -262,8 +306,8 @@ std::vector<SpotLight> spot_lights = {
 
 std::vector<PointLight> point_lights = {
     {
-        glm::vec4(2.0f, 2.0f, 2.0f, 1.0f),
-        glm::vec4(1.0f, 1.0f, 1.0f, 5.0f)
+        glm::vec4(2.0f, 0.0f, -0.5f, 1.0f),
+        glm::vec4(1.0f, 1.0f, 1.0f, 5.0f),
     }
 };
 
@@ -309,32 +353,38 @@ void update_light_line_vertices() {
 
         light_line_vertex_buffer_memory[vertex + 0] = {
             position,
-            glm::vec3(0.0f)
+            glm::vec3(0.0f),
+			glm::vec2(0.0f)
         };
 
         light_line_vertex_buffer_memory[vertex + 1] = {
             position + direction * length,
-            glm::vec3(0.0f)
+            glm::vec3(0.0f),
+			glm::vec2(0.0f)
         };
 
         light_line_vertex_buffer_memory[vertex + 2] = {
             position,
-            glm::vec3(0.0f)
+            glm::vec3(0.0f),
+			glm::vec2(0.0f)
         };
 
         light_line_vertex_buffer_memory[vertex + 3] = {
             position + left_direction * length,
-            glm::vec3(0.0f)
+            glm::vec3(0.0f),
+			glm::vec2(0.0f)
         };
 
         light_line_vertex_buffer_memory[vertex + 4] = {
             position,
-            glm::vec3(0.0f)
+            glm::vec3(0.0f),
+			glm::vec2(0.0f)
         };
 
         light_line_vertex_buffer_memory[vertex + 5] = {
             position + right_direction * length,
-            glm::vec3(0.0f)
+            glm::vec3(0.0f),
+			glm::vec2(0.0f)
         };
     }
 }
@@ -372,6 +422,409 @@ std::vector<char> readFile(const std::string& filename) {
 	return buffer;
 }
 
+bool load_png_rgba(const std::string& filename, LoadedPng& image) {
+    unsigned error = lodepng::decode(
+        image.pixels,
+        image.width,
+        image.height,
+        filename
+    );
+
+    if (error != 0) {
+        std::cerr
+            << "Failed to load PNG: "
+            << filename
+            << ": "
+            << lodepng_error_text(error)
+            << '\n';
+
+        return false;
+    }
+
+    return true;
+}
+
+LoadedPng make_specular_map(const LoadedPng& source) {
+    LoadedPng specular_map;
+    specular_map.width = source.width;
+    specular_map.height = source.height;
+    specular_map.pixels.resize(source.pixels.size());
+
+    for (size_t i = 0; i < source.pixels.size(); i += 4) {
+        // Усредняем RGB состовляющие - простая оценка яркости
+		const unsigned int brightness =
+            (source.pixels[i] +
+             source.pixels[i + 1] +
+             source.pixels[i + 2]) / 3;
+
+		// где будет блик
+        const unsigned char mask =
+            brightness > 128 ? 255 : 0;
+
+
+        specular_map.pixels[i] = mask;
+        specular_map.pixels[i + 1] = mask;
+        specular_map.pixels[i + 2] = mask;
+        specular_map.pixels[i + 3] = 255;	// полная непрозрачность
+    }
+
+    return specular_map;
+}
+
+LoadedPng make_emissive_map(const LoadedPng& source) {
+    LoadedPng emissive_map;
+    emissive_map.width = source.width;
+    emissive_map.height = source.height;
+    emissive_map.pixels.resize(source.pixels.size());
+
+    for (size_t i = 0; i < source.pixels.size(); i += 4) {
+        const unsigned int brightness =
+            (source.pixels[i] +
+             source.pixels[i + 1] +
+             source.pixels[i + 2]) / 3;
+
+        const bool is_glowing = brightness > 220;
+
+        emissive_map.pixels[i] =
+            is_glowing ? 255 : 0;
+        emissive_map.pixels[i + 1] =
+            is_glowing ? 90 : 0;
+        emissive_map.pixels[i + 2] =
+            is_glowing ? 20 : 0;
+        emissive_map.pixels[i + 3] = 255;
+    }
+
+    return emissive_map;
+}
+
+bool upload_texture_pixels(const LoadedPng& image, VkImage destination_image) {
+    auto& context = graphics::internal::context;
+
+    VkCommandPool command_pool = VK_NULL_HANDLE;
+    VkFence upload_fence = VK_NULL_HANDLE;
+
+    auto cleanup_commands = [&]() {
+        if (upload_fence != VK_NULL_HANDLE) {
+            vkDestroyFence(context.device, upload_fence, nullptr);
+        }
+
+        if (command_pool != VK_NULL_HANDLE) {
+            vkDestroyCommandPool(context.device, command_pool, nullptr);
+        }
+    };
+
+    const VkCommandPoolCreateInfo command_pool_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+        .queueFamilyIndex = context.graphics_queue_index,
+    };
+
+    if (vkCreateCommandPool(
+            context.device,
+            &command_pool_info,
+            nullptr,
+            &command_pool
+        ) != VK_SUCCESS) {
+        std::cerr << "Failed to create texture command pool\n";
+        return false;
+    }
+
+    const VkCommandBufferAllocateInfo command_buffer_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = command_pool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1,
+    };
+
+    VkCommandBuffer command_buffer = VK_NULL_HANDLE;
+
+    if (vkAllocateCommandBuffers(
+            context.device,
+            &command_buffer_info,
+            &command_buffer
+        ) != VK_SUCCESS) {
+        std::cerr << "Failed to allocate texture command buffer\n";
+        cleanup_commands();
+        return false;
+    }
+
+    const VkCommandBufferBeginInfo begin_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+
+    if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS) {
+        std::cerr << "Failed to begin texture command buffer\n";
+        cleanup_commands();
+        return false;
+    }
+
+    VkImageMemoryBarrier to_transfer = {};
+    to_transfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    to_transfer.srcAccessMask = 0;
+    to_transfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    to_transfer.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    to_transfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    to_transfer.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    to_transfer.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    to_transfer.image = destination_image;
+    to_transfer.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    to_transfer.subresourceRange.baseMipLevel = 0;
+    to_transfer.subresourceRange.levelCount = 1;
+    to_transfer.subresourceRange.baseArrayLayer = 0;
+    to_transfer.subresourceRange.layerCount = 1;
+
+    vkCmdPipelineBarrier(
+        command_buffer,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &to_transfer
+    );
+
+    VkBufferImageCopy copy_region = {};
+    copy_region.bufferOffset = 0;
+    copy_region.bufferRowLength = 0;
+    copy_region.bufferImageHeight = 0;
+    copy_region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copy_region.imageSubresource.mipLevel = 0;
+    copy_region.imageSubresource.baseArrayLayer = 0;
+    copy_region.imageSubresource.layerCount = 1;
+    copy_region.imageOffset = {0, 0, 0};
+    copy_region.imageExtent = {
+        image.width,
+        image.height,
+        1
+    };
+
+    vkCmdCopyBufferToImage(
+        command_buffer,
+        texture_staging_buffer,
+        destination_image,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &copy_region
+    );
+
+    VkImageMemoryBarrier to_shader_read = {};
+    to_shader_read.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    to_shader_read.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    to_shader_read.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    to_shader_read.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    to_shader_read.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    to_shader_read.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    to_shader_read.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    to_shader_read.image = destination_image;
+    to_shader_read.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    to_shader_read.subresourceRange.baseMipLevel = 0;
+    to_shader_read.subresourceRange.levelCount = 1;
+    to_shader_read.subresourceRange.baseArrayLayer = 0;
+    to_shader_read.subresourceRange.layerCount = 1;
+
+    vkCmdPipelineBarrier(
+        command_buffer,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &to_shader_read
+    );
+
+    if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
+        std::cerr << "Failed to end texture command buffer\n";
+        cleanup_commands();
+        return false;
+    }
+
+    const VkFenceCreateInfo fence_info = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+    };
+
+    if (vkCreateFence(
+            context.device,
+            &fence_info,
+            nullptr,
+            &upload_fence
+        ) != VK_SUCCESS) {
+        std::cerr << "Failed to create texture upload fence\n";
+        cleanup_commands();
+        return false;
+    }
+
+    const VkSubmitInfo submit_info = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &command_buffer,
+    };
+
+    if (vkQueueSubmit(
+            context.graphics_queue,
+            1,
+            &submit_info,
+            upload_fence
+        ) != VK_SUCCESS) {
+        std::cerr << "Failed to submit texture upload commands\n";
+        cleanup_commands();
+        return false;
+    }
+
+    if (vkWaitForFences(
+            context.device,
+            1,
+            &upload_fence,
+            VK_TRUE,
+            UINT64_MAX
+        ) != VK_SUCCESS) {
+        std::cerr << "Failed to wait for texture upload\n";
+        cleanup_commands();
+        return false;
+    }
+
+    cleanup_commands();
+
+    vmaDestroyBuffer(
+        context.allocator,
+        texture_staging_buffer,
+        texture_staging_allocation
+    );
+
+    texture_staging_buffer = VK_NULL_HANDLE;
+    texture_staging_allocation = VK_NULL_HANDLE;
+
+    return true;
+}
+
+// Копируем байты из одного уже созданного буфера в другой
+bool copy_buffer(
+    VkBuffer source_buffer,
+    VkBuffer destination_buffer,
+    VkDeviceSize size
+) {
+    auto& context = graphics::internal::context;
+
+    VkCommandPool command_pool = VK_NULL_HANDLE;
+
+    const VkCommandPoolCreateInfo pool_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+        .queueFamilyIndex = context.graphics_queue_index,
+    };
+
+    if (vkCreateCommandPool(
+            context.device,
+            &pool_info,
+            nullptr,
+            &command_pool
+        ) != VK_SUCCESS) {
+        std::cerr << "Failed to create buffer copy command pool\n";
+        return false;
+    }
+
+    const VkCommandBufferAllocateInfo allocate_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = command_pool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1,
+    };
+
+    VkCommandBuffer command_buffer = VK_NULL_HANDLE;
+
+    if (vkAllocateCommandBuffers(
+            context.device,
+            &allocate_info,
+            &command_buffer
+        ) != VK_SUCCESS) {
+        std::cerr << "Failed to allocate buffer copy command buffer\n";
+        vkDestroyCommandPool(context.device, command_pool, nullptr);
+        return false;
+    }
+
+    const VkCommandBufferBeginInfo begin_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+
+    if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS) {
+        std::cerr << "Failed to begin buffer copy command buffer\n";
+        vkDestroyCommandPool(context.device, command_pool, nullptr);
+        return false;
+    }
+
+    const VkBufferCopy copy_region = {
+        .srcOffset = 0,
+        .dstOffset = 0,
+        .size = size,
+    };
+
+    vkCmdCopyBuffer(
+        command_buffer,
+        source_buffer,
+        destination_buffer,
+        1,
+        &copy_region
+    );
+
+	// Копирование в буфер завершило запись. Можно читать как атрибуты вершин или индексы
+	const VkBufferMemoryBarrier buffer_barrier = {
+		.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+		.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+		.dstAccessMask =
+			VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT |
+			VK_ACCESS_INDEX_READ_BIT,
+		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.buffer = destination_buffer,
+		.offset = 0,
+		.size = size,
+	};
+
+	vkCmdPipelineBarrier(
+		command_buffer,
+		VK_PIPELINE_STAGE_TRANSFER_BIT,
+		VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+		0,
+		0, nullptr,
+		1, &buffer_barrier,
+		0, nullptr
+	);
+
+    if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
+        std::cerr << "Failed to end buffer copy command buffer\n";
+        vkDestroyCommandPool(context.device, command_pool, nullptr);
+        return false;
+    }
+
+	// Отправка команды видеокарте
+    const VkSubmitInfo submit_info = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &command_buffer,
+    };
+
+	// Какую команду выполнить для очереди 
+    if (vkQueueSubmit(
+            context.graphics_queue,
+            1,
+            &submit_info,
+            VK_NULL_HANDLE
+        ) != VK_SUCCESS) {
+        std::cerr << "Failed to submit buffer copy commands\n";
+        vkDestroyCommandPool(context.device, command_pool, nullptr);
+        return false;
+    }
+
+    if (vkQueueWaitIdle(context.graphics_queue) != VK_SUCCESS) {
+        std::cerr << "Failed to wait for buffer copy\n";
+        vkDestroyCommandPool(context.device, command_pool, nullptr);
+        return false;
+    }
+
+    vkDestroyCommandPool(context.device, command_pool, nullptr);
+    return true;
+}
 
 VkShaderModule createShaderModule(
 	const std::vector<char>& code,
@@ -419,9 +872,17 @@ VkVertexInputAttributeDescription vertex_normal_attribute = {
     .offset = offsetof(Vertex, normal),
 };
 
+VkVertexInputAttributeDescription vertex_uv_attribute = {
+    .location = 2,
+    .binding = 0,
+    .format = VK_FORMAT_R32G32_SFLOAT,
+    .offset = offsetof(Vertex, uv),
+};
+
 const VkVertexInputAttributeDescription vertex_attributes[] = {
     vertex_position_attribute,
     vertex_normal_attribute,
+	vertex_uv_attribute,
 };
 
 VkVertexInputBindingDescription light_line_vertex_binding = {
@@ -444,9 +905,17 @@ VkVertexInputAttributeDescription light_line_vertex_normal_attribute = {
     .offset = offsetof(LightLineVertex, normal),
 };
 
+VkVertexInputAttributeDescription light_line_vertex_uv_attribute = {
+    .location = 2,
+    .binding = 0,
+    .format = VK_FORMAT_R32G32_SFLOAT,
+    .offset = offsetof(LightLineVertex, uv),
+};
+
 const VkVertexInputAttributeDescription light_line_vertex_attributes[] = {
     light_line_vertex_position_attribute,
     light_line_vertex_normal_attribute,
+	light_line_vertex_uv_attribute,
 };
 
 namespace application {
@@ -454,7 +923,221 @@ namespace application {
 bool initialize() {
 	auto& context = graphics::internal::context;
 
+	VkPhysicalDeviceProperties device_properties{};
+	vkGetPhysicalDeviceProperties(
+		context.physical_device,
+		&device_properties
+	);
+
+	const VkDeviceSize model_uniform_size = sizeof(ModelUniforms);
+	const VkDeviceSize alignment =
+		device_properties.limits.minUniformBufferOffsetAlignment;
+
+	model_uniform_stride =
+		((model_uniform_size + alignment - 1) / alignment) * alignment;
+
 	calculate_vertex_normals(vertices);
+
+	LoadedPng check_image;
+
+	if (!load_png_rgba("textures/check.png", check_image)) {
+		return false;
+	}
+
+	std::cout
+		<< "PNG loaded: "
+		<< check_image.width << " x " << check_image.height
+		<< ", bytes: " << check_image.pixels.size()
+		<< '\n';
+
+	LoadedPng second_image;
+
+	if (!load_png_rgba("textures/second.png", second_image)) {
+		return false;
+	}
+
+	std::cout
+		<< "Second PNG loaded: "
+		<< second_image.width << " x " << second_image.height
+		<< ", bytes: " << second_image.pixels.size()
+		<< '\n';
+
+	LoadedPng specular_image = make_specular_map(second_image);
+	LoadedPng emissive_image = make_emissive_map(second_image);
+
+	LoadedPng black_fallback_image;
+		black_fallback_image.width = 1;
+		black_fallback_image.height = 1;
+		black_fallback_image.pixels = {
+			0,   // красный
+			0,   // зелёный
+			0,   // синий
+			255  // альфа
+		};
+
+	const VkImageCreateInfo texture_image_info = {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+		.imageType = VK_IMAGE_TYPE_2D,
+		.format = VK_FORMAT_R8G8B8A8_UNORM,
+		.extent = {
+			check_image.width,
+			check_image.height,
+			1
+		},
+		.mipLevels = 1,
+		.arrayLayers = 1,
+		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.tiling = VK_IMAGE_TILING_OPTIMAL,
+		.usage =
+			VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+			VK_IMAGE_USAGE_SAMPLED_BIT,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+	};
+
+	const VmaAllocationCreateInfo texture_allocation_info = {
+		.usage = VMA_MEMORY_USAGE_GPU_ONLY,
+	};
+
+	if (vmaCreateImage(
+			context.allocator,
+			&texture_image_info,
+			&texture_allocation_info,
+			&albedo_texture_image,
+			&albedo_texture_allocation,
+			nullptr
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create texture image\n";
+		return false;
+	}
+
+	const VkImageCreateInfo second_texture_image_info = {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+		.imageType = VK_IMAGE_TYPE_2D,
+		.format = VK_FORMAT_R8G8B8A8_UNORM,
+		.extent = {
+			second_image.width,
+			second_image.height,
+			1
+		},
+		.mipLevels = 1,
+		.arrayLayers = 1,
+		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.tiling = VK_IMAGE_TILING_OPTIMAL,
+		.usage =
+			VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+			VK_IMAGE_USAGE_SAMPLED_BIT,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+	};
+
+	if (vmaCreateImage(
+			context.allocator,
+			&second_texture_image_info,
+			&texture_allocation_info,
+			&second_albedo_texture_image,
+			&second_albedo_texture_allocation,
+			nullptr
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create second texture image\n";
+		return false;
+	}
+
+	const VkImageCreateInfo black_fallback_image_info = {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+		.imageType = VK_IMAGE_TYPE_2D,
+		.format = VK_FORMAT_R8G8B8A8_UNORM,
+		.extent = {
+			black_fallback_image.width,
+			black_fallback_image.height,
+			1
+		},
+		.mipLevels = 1,
+		.arrayLayers = 1,
+		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.tiling = VK_IMAGE_TILING_OPTIMAL,
+		.usage =
+			VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+			VK_IMAGE_USAGE_SAMPLED_BIT,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+	};
+
+	if (vmaCreateImage(
+			context.allocator,
+			&black_fallback_image_info,
+			&texture_allocation_info,
+			&black_fallback_texture_image,
+			&black_fallback_texture_allocation,
+			nullptr
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create black fallback texture image\n";
+		return false;
+	}
+
+	const VkImageCreateInfo specular_image_info = {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+		.imageType = VK_IMAGE_TYPE_2D,
+		.format = VK_FORMAT_R8G8B8A8_UNORM,
+		.extent = {
+			specular_image.width,
+			specular_image.height,
+			1
+		},
+		.mipLevels = 1,
+		.arrayLayers = 1,
+		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.tiling = VK_IMAGE_TILING_OPTIMAL,
+		.usage =
+			VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+			VK_IMAGE_USAGE_SAMPLED_BIT,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+	};
+
+	if (vmaCreateImage(
+			context.allocator,
+			&specular_image_info,
+			&texture_allocation_info,
+			&specular_texture_image,
+			&specular_texture_allocation,
+			nullptr
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create specular texture image\n";
+		return false;
+	}
+
+	const VkImageCreateInfo emissive_image_info = {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+		.imageType = VK_IMAGE_TYPE_2D,
+		.format = VK_FORMAT_R8G8B8A8_UNORM,
+		.extent = {
+			emissive_image.width,
+			emissive_image.height,
+			1
+		},
+		.mipLevels = 1,
+		.arrayLayers = 1,
+		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.tiling = VK_IMAGE_TILING_OPTIMAL,
+		.usage =
+			VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+			VK_IMAGE_USAGE_SAMPLED_BIT,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+	};
+
+	if (vmaCreateImage(
+			context.allocator,
+			&emissive_image_info,
+			&texture_allocation_info,
+			&emissive_texture_image,
+			&emissive_texture_allocation,
+			nullptr
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create emissive texture image\n";
+		return false;
+	}
 
 	const auto vertex_shader_code = readFile("shaders/pyramid.vert.spv");
 	const auto fragment_shader_code = readFile("shaders/pyramid.frag.spv");
@@ -471,71 +1154,712 @@ bool initialize() {
 		return false;
 	}
 
+	const VkDeviceSize texture_data_size =
+		static_cast<VkDeviceSize>(check_image.pixels.size());
+
+	const VkBufferCreateInfo staging_buffer_info = {
+		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+		.size = texture_data_size,
+		.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+	};
+
+	const VmaAllocationCreateInfo staging_allocation_info = {
+		.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+		.usage = VMA_MEMORY_USAGE_AUTO,
+	};
+
+	if (vmaCreateBuffer(
+			context.allocator,
+			&staging_buffer_info,
+			&staging_allocation_info,
+			&texture_staging_buffer,
+			&texture_staging_allocation,
+			nullptr
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create texture staging buffer\n";
+		return false;
+	}
+
+	void* texture_staging_memory = nullptr;
+
+	if (vmaMapMemory(
+			context.allocator,
+			texture_staging_allocation,
+			&texture_staging_memory
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to map texture staging buffer\n";
+
+		vmaDestroyBuffer(
+			context.allocator,
+			texture_staging_buffer,
+			texture_staging_allocation
+		);
+
+		texture_staging_buffer = VK_NULL_HANDLE;
+		texture_staging_allocation = VK_NULL_HANDLE;
+
+		return false;
+	}
+
+	std::memcpy(
+		texture_staging_memory,
+		check_image.pixels.data(),
+		check_image.pixels.size()
+	);
+
+	vmaFlushAllocation(
+		context.allocator,
+		texture_staging_allocation,
+		0,
+		texture_data_size
+	);
+
+	vmaUnmapMemory(
+		context.allocator,
+		texture_staging_allocation
+	);
+
+	if (!upload_texture_pixels(check_image, albedo_texture_image)) {
+		return false;
+	}
+
+	const VkDeviceSize second_texture_data_size =
+		static_cast<VkDeviceSize>(second_image.pixels.size());
+
+	const VkBufferCreateInfo second_staging_buffer_info = {
+		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+		.size = second_texture_data_size,
+		.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+	};
+
+	if (vmaCreateBuffer(
+			context.allocator,
+			&second_staging_buffer_info,
+			&staging_allocation_info,
+			&texture_staging_buffer,
+			&texture_staging_allocation,
+			nullptr
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create second texture staging buffer\n";
+		return false;
+	}
+
+	void* second_texture_staging_memory = nullptr;
+
+	if (vmaMapMemory(
+			context.allocator,
+			texture_staging_allocation,
+			&second_texture_staging_memory
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to map second texture staging buffer\n";
+		return false;
+	}
+
+	std::memcpy(
+		second_texture_staging_memory,
+		second_image.pixels.data(),
+		second_texture_data_size
+	);
+
+	vmaFlushAllocation(
+		context.allocator,
+		texture_staging_allocation,
+		0,
+		second_texture_data_size
+	);
+
+	vmaUnmapMemory(context.allocator, texture_staging_allocation);
+
+	if (!upload_texture_pixels(second_image, second_albedo_texture_image)) {
+		return false;
+	}
+
+	const VkDeviceSize black_fallback_data_size =
+		static_cast<VkDeviceSize>(black_fallback_image.pixels.size());
+
+	const VkBufferCreateInfo black_fallback_staging_info = {
+		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+		.size = black_fallback_data_size,
+		.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+	};
+
+	if (vmaCreateBuffer(
+			context.allocator,
+			&black_fallback_staging_info,
+			&staging_allocation_info,
+			&texture_staging_buffer,
+			&texture_staging_allocation,
+			nullptr
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create black fallback staging buffer\n";
+		return false;
+	}
+
+	void* black_fallback_staging_memory = nullptr;
+
+	if (vmaMapMemory(
+			context.allocator,
+			texture_staging_allocation,
+			&black_fallback_staging_memory
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to map black fallback staging buffer\n";
+		return false;
+	}
+
+	std::memcpy(
+		black_fallback_staging_memory,
+		black_fallback_image.pixels.data(),
+		black_fallback_data_size
+	);
+
+	vmaFlushAllocation(
+		context.allocator,
+		texture_staging_allocation,
+		0,
+		black_fallback_data_size
+	);
+
+	vmaUnmapMemory(context.allocator, texture_staging_allocation);
+
+	if (!upload_texture_pixels(
+			black_fallback_image,
+			black_fallback_texture_image
+		)) {
+		return false;
+	}
+
+	// Загружаем пиксели через staging
+	const VkDeviceSize specular_data_size =
+		static_cast<VkDeviceSize>(specular_image.pixels.size());
+
+	const VkBufferCreateInfo specular_staging_info = {
+		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+		.size = specular_data_size,
+		.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+	};
+
+	if (vmaCreateBuffer(
+			context.allocator,
+			&specular_staging_info,
+			&staging_allocation_info,
+			&texture_staging_buffer,
+			&texture_staging_allocation,
+			nullptr
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create specular staging buffer\n";
+		return false;
+	}
+
+	void* specular_staging_memory = nullptr;
+
+	if (vmaMapMemory(
+			context.allocator,
+			texture_staging_allocation,
+			&specular_staging_memory
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to map specular staging buffer\n";
+		return false;
+	}
+
+	std::memcpy(
+		specular_staging_memory,
+		specular_image.pixels.data(),
+		specular_data_size
+	);
+
+	vmaFlushAllocation(
+		context.allocator,
+		texture_staging_allocation,
+		0,
+		specular_data_size
+	);
+
+	vmaUnmapMemory(context.allocator, texture_staging_allocation);
+
+	if (!upload_texture_pixels(specular_image, specular_texture_image)) {
+		return false;
+	}
+
+	// Загружаем пиксели через staging
+	const VkDeviceSize emissive_data_size =
+		static_cast<VkDeviceSize>(emissive_image.pixels.size());
+
+	const VkBufferCreateInfo emissive_staging_info = {
+		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+		.size = emissive_data_size,
+		.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+	};
+
+	if (vmaCreateBuffer(
+			context.allocator,
+			&emissive_staging_info,
+			&staging_allocation_info,
+			&texture_staging_buffer,
+			&texture_staging_allocation,
+			nullptr
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create emissive staging buffer\n";
+		return false;
+	}
+
+	void* emissive_staging_memory = nullptr;
+
+	if (vmaMapMemory(
+			context.allocator,
+			texture_staging_allocation,
+			&emissive_staging_memory
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to map emissive staging buffer\n";
+		return false;
+	}
+
+	std::memcpy(
+		emissive_staging_memory,
+		emissive_image.pixels.data(),
+		emissive_data_size
+	);
+
+	vmaFlushAllocation(
+		context.allocator,
+		texture_staging_allocation,
+		0,
+		emissive_data_size
+	);
+
+	vmaUnmapMemory(context.allocator, texture_staging_allocation);
+
+	if (!upload_texture_pixels(emissive_image, emissive_texture_image)) {
+		return false;
+	}
+
+	const VkImageViewCreateInfo texture_view_info = {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+		.image = albedo_texture_image,
+		.viewType = VK_IMAGE_VIEW_TYPE_2D,
+		.format = VK_FORMAT_R8G8B8A8_UNORM,
+		.subresourceRange = {
+			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1,
+		},
+	};
+
+	if (vkCreateImageView(
+			context.device,
+			&texture_view_info,
+			nullptr,
+			&albedo_texture_view
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create texture image view\n";
+		return false;
+	}
+
+	const VkImageViewCreateInfo second_texture_view_info = {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+		.image = second_albedo_texture_image,
+		.viewType = VK_IMAGE_VIEW_TYPE_2D,
+		.format = VK_FORMAT_R8G8B8A8_UNORM,
+		.subresourceRange = {
+			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1,
+		},
+	};
+
+	if (vkCreateImageView(
+			context.device,
+			&second_texture_view_info,
+			nullptr,
+			&second_albedo_texture_view
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create second texture image view\n";
+		return false;
+	}
+
+	const VkImageViewCreateInfo black_fallback_view_info = {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+		.image = black_fallback_texture_image,
+		.viewType = VK_IMAGE_VIEW_TYPE_2D,
+		.format = VK_FORMAT_R8G8B8A8_UNORM,
+		.subresourceRange = {
+			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1,
+		},
+	};
+
+	if (vkCreateImageView(
+			context.device,
+			&black_fallback_view_info,
+			nullptr,
+			&black_fallback_texture_view
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create black fallback image view\n";
+		return false;
+	}
+
+	const VkImageViewCreateInfo specular_view_info = {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+		.image = specular_texture_image,
+		.viewType = VK_IMAGE_VIEW_TYPE_2D,
+		.format = VK_FORMAT_R8G8B8A8_UNORM,
+		.subresourceRange = {
+			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1,
+		},
+	};
+
+	if (vkCreateImageView(
+			context.device,
+			&specular_view_info,
+			nullptr,
+			&specular_texture_view
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create specular texture image view\n";
+		return false;
+	}
+
+		const VkImageViewCreateInfo emissive_view_info = {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+		.image = emissive_texture_image,
+		.viewType = VK_IMAGE_VIEW_TYPE_2D,
+		.format = VK_FORMAT_R8G8B8A8_UNORM,
+		.subresourceRange = {
+			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1,
+		},
+	};
+
+	if (vkCreateImageView(
+			context.device,
+			&emissive_view_info,
+			nullptr,
+			&emissive_texture_view
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create specular texture image view\n";
+		return false;
+	}
+
+	const VkSamplerCreateInfo texture_sampler_info = {
+		.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+		.magFilter = VK_FILTER_LINEAR,
+		.minFilter = VK_FILTER_LINEAR,
+		.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST,
+		.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+		.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+		.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+		.anisotropyEnable = VK_FALSE,
+		.maxAnisotropy = 1.0f,
+		.compareEnable = VK_FALSE,
+		.minLod = 0.0f,
+		.maxLod = 0.0f,
+		.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+		.unnormalizedCoordinates = VK_FALSE,
+	};
+
+	if (vkCreateSampler(
+			context.device,
+			&texture_sampler_info,
+			nullptr,
+			&albedo_texture_sampler
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create texture sampler\n";
+		return false;
+	}
+
 	// Связываем описание стадии с соответствующим shader module
 	vertex_shader_stage.module = vertex_shader_module;
 	fragment_shader_stage.module = fragment_shader_module;
 
+	const VkDeviceSize vertex_buffer_size = sizeof(vertices);
+
+	const VkBufferCreateInfo vertex_staging_buffer_info = {
+		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+		.size = vertex_buffer_size,
+		.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,			// Источник данных для копирования
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+	};
+
+	const VmaAllocationCreateInfo vertex_staging_allocation_info = {
+		.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+		.usage = VMA_MEMORY_USAGE_AUTO,
+	};
+
+	VkBuffer vertex_staging_buffer = VK_NULL_HANDLE;
+	VmaAllocation vertex_staging_allocation = VK_NULL_HANDLE;
+
+	if (vmaCreateBuffer(
+			context.allocator,
+			&vertex_staging_buffer_info,
+			&vertex_staging_allocation_info,
+			&vertex_staging_buffer,
+			&vertex_staging_allocation,
+			nullptr
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create vertex staging buffer\n";
+		return false;
+	}
+
+	void* vertex_staging_memory = nullptr;
+
+	if (vmaMapMemory(
+			context.allocator,
+			vertex_staging_allocation,
+			&vertex_staging_memory
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to map vertex staging buffer\n";
+		vmaDestroyBuffer(
+			context.allocator,
+			vertex_staging_buffer,
+			vertex_staging_allocation
+		);
+		return false;
+	}
+
+	std::memcpy(vertex_staging_memory, vertices, vertex_buffer_size);
+
+	vmaFlushAllocation(
+		context.allocator,
+		vertex_staging_allocation,
+		0,
+		vertex_buffer_size
+	);
+
+	vmaUnmapMemory(context.allocator, vertex_staging_allocation);
+
 	const VkBufferCreateInfo vertex_buffer_info = {
 		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-		.size = sizeof(vertices),
-		.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		.size = vertex_buffer_size,
+		.usage =
+			VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
 	};
 
 	const VmaAllocationCreateInfo vertex_buffer_allocation_info = {
+		.usage = VMA_MEMORY_USAGE_GPU_ONLY,
+	};
+
+	if (vmaCreateBuffer(
+			context.allocator,
+			&vertex_buffer_info,
+			&vertex_buffer_allocation_info,
+			&vertex_buffer,
+			&vertex_buffer_allocation,
+			nullptr
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create GPU vertex buffer\n";
+		vmaDestroyBuffer(
+			context.allocator,
+			vertex_staging_buffer,
+			vertex_staging_allocation
+		);
+		return false;
+	}
+
+	if (!copy_buffer(
+			vertex_staging_buffer,
+			vertex_buffer,
+			vertex_buffer_size
+		)) {
+		std::cerr << "Failed to copy vertices to GPU buffer\n";
+
+		vmaDestroyBuffer(
+			context.allocator,
+			vertex_staging_buffer,
+			vertex_staging_allocation
+		);
+
+		vmaDestroyBuffer(
+			context.allocator,
+			vertex_buffer,
+			vertex_buffer_allocation
+		);
+
+		vertex_buffer = VK_NULL_HANDLE;
+		vertex_buffer_allocation = VK_NULL_HANDLE;
+
+		return false;
+	}
+
+	vmaDestroyBuffer(
+		context.allocator,
+		vertex_staging_buffer,
+		vertex_staging_allocation
+	);
+
+	const VkDeviceSize index_buffer_size = sizeof(indices);
+
+	const VkBufferCreateInfo index_staging_buffer_info = {
+		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+		.size = index_buffer_size,
+		.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+	};
+
+	const VmaAllocationCreateInfo index_staging_allocation_info = {
 		.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
 		.usage = VMA_MEMORY_USAGE_AUTO,
 	};
 
-	if (vmaCreateBuffer(context.allocator, &vertex_buffer_info,
-			&vertex_buffer_allocation_info, &vertex_buffer,
-			&vertex_buffer_allocation, nullptr) != VK_SUCCESS) {
-		std::cerr << "Failed to create vertex buffer\n";
+	VkBuffer index_staging_buffer = VK_NULL_HANDLE;
+	VmaAllocation index_staging_allocation = VK_NULL_HANDLE;
+
+	if (vmaCreateBuffer(
+			context.allocator,
+			&index_staging_buffer_info,
+			&index_staging_allocation_info,
+			&index_staging_buffer,
+			&index_staging_allocation,
+			nullptr
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create index staging buffer\n";
 		return false;
 	}
 
-	void* vertex_data = nullptr;
+	void* index_staging_memory = nullptr;
 
-	if (vmaMapMemory(context.allocator, vertex_buffer_allocation,
-			&vertex_data) != VK_SUCCESS) {
-		std::cerr << "Failed to map vertex buffer memory\n";
+	if (vmaMapMemory(
+			context.allocator,
+			index_staging_allocation,
+			&index_staging_memory
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to map index staging buffer\n";
+		vmaDestroyBuffer(
+			context.allocator,
+			index_staging_buffer,
+			index_staging_allocation
+		);
 		return false;
 	}
 
-	std::memcpy(vertex_data, vertices, sizeof(vertices));
+	std::memcpy(index_staging_memory, indices, index_buffer_size);
 
-	vmaUnmapMemory(context.allocator, vertex_buffer_allocation);
+	vmaFlushAllocation(
+		context.allocator,
+		index_staging_allocation,
+		0,
+		index_buffer_size
+	);
+
+	vmaUnmapMemory(context.allocator, index_staging_allocation);
 
 	const VkBufferCreateInfo index_buffer_info = {
 		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-		.size = sizeof(indices),
-		.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+		.size = index_buffer_size,
+		.usage =
+			VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+			VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
 	};
 
 	const VmaAllocationCreateInfo index_buffer_allocation_info = {
+		.usage = VMA_MEMORY_USAGE_GPU_ONLY,
+	};
+
+	if (vmaCreateBuffer(
+			context.allocator,
+			&index_buffer_info,
+			&index_buffer_allocation_info,
+			&index_buffer,
+			&index_buffer_allocation,
+			nullptr
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create GPU index buffer\n";
+		vmaDestroyBuffer(
+			context.allocator,
+			index_staging_buffer,
+			index_staging_allocation
+		);
+		return false;
+	}
+
+	if (!copy_buffer(
+			index_staging_buffer,
+			index_buffer,
+			index_buffer_size
+		)) {
+		std::cerr << "Failed to copy indices to GPU buffer\n";
+
+		vmaDestroyBuffer(
+			context.allocator,
+			index_staging_buffer,
+			index_staging_allocation
+		);
+
+		vmaDestroyBuffer(
+			context.allocator,
+			index_buffer,
+			index_buffer_allocation
+		);
+
+		index_buffer = VK_NULL_HANDLE;
+		index_buffer_allocation = VK_NULL_HANDLE;
+
+		return false;
+	}
+
+	vmaDestroyBuffer(
+		context.allocator,
+		index_staging_buffer,
+		index_staging_allocation
+	);
+
+
+	const VmaAllocationCreateInfo dynamic_model_uniform_buffer_allocation_info = {
 		.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
 		.usage = VMA_MEMORY_USAGE_AUTO,
 	};
 
-	if (vmaCreateBuffer(context.allocator, &index_buffer_info,
-			&index_buffer_allocation_info, &index_buffer,
-			&index_buffer_allocation, nullptr) != VK_SUCCESS) {
-		std::cerr << "Failed to create index buffer\n";
+	const VkBufferCreateInfo dynamic_model_uniform_buffer_create_info = {
+		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+		.size = model_uniform_stride * 2,
+		.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+	};
+
+	if (vmaCreateBuffer(
+			context.allocator,
+			&dynamic_model_uniform_buffer_create_info,
+			&dynamic_model_uniform_buffer_allocation_info,
+			&dynamic_model_uniform_buffer,
+			&dynamic_model_uniform_buffer_allocation,
+			nullptr
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create dynamic model uniform buffer\n";
 		return false;
 	}
 
-	void* index_data = nullptr;
+	void* dynamic_model_uniform_data = nullptr;
 
-	if (vmaMapMemory(context.allocator, index_buffer_allocation,
-			&index_data) != VK_SUCCESS) {
-		std::cerr << "Failed to map index buffer memory\n";
+	if (vmaMapMemory(
+			context.allocator,
+			dynamic_model_uniform_buffer_allocation,
+			&dynamic_model_uniform_data
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to map dynamic model uniform buffer memory\n";
 		return false;
 	}
 
-	std::memcpy(index_data, indices, sizeof(indices));
-
-	vmaUnmapMemory(context.allocator, index_buffer_allocation);
+	dynamic_model_uniform_buffer_memory =
+		static_cast<unsigned char*>(dynamic_model_uniform_data);
 
 	const VkBufferCreateInfo light_visualization_vertex_buffer_create_info = {
 		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -673,38 +1997,11 @@ bool initialize() {
 		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
 	};
 
-	const VmaAllocationCreateInfo uniform_buffer_allocation_info = {
-		.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-		.usage = VMA_MEMORY_USAGE_AUTO,
-	};
-
 	if (vmaCreateBuffer(context.allocator, &scene_uniform_buffer_create_info,
-			&uniform_buffer_allocation_info, &scene_uniform_buffer,
+			&dynamic_model_uniform_buffer_allocation_info, &scene_uniform_buffer,
 		    &scene_uniform_buffer_allocation, nullptr
 		) != VK_SUCCESS) {
 		std::cerr << "Failed to create scene uniform buffer\n";
-		return false;
-	}
-
-	const VkBufferCreateInfo model_uniform_buffer_create_info  = {
-		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-		.size = sizeof(ModelUniforms),
-		.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-	};
-
-	if (vmaCreateBuffer(context.allocator, &model_uniform_buffer_create_info , &uniform_buffer_allocation_info,
-			&model_uniform_buffer, &model_uniform_buffer_allocation, nullptr
-		) != VK_SUCCESS) {
-		std::cerr << "Failed to create model uniform buffer\n";
-		return false;
-	}
-
-	if (vmaCreateBuffer(context.allocator, &model_uniform_buffer_create_info ,
-			&uniform_buffer_allocation_info, &model_uniform_buffer_2,
-			&model_uniform_buffer_2_allocation, nullptr
-		) != VK_SUCCESS) {
-		std::cerr << "Failed to create second model uniform buffer\n";
 		return false;
 	}
 
@@ -717,26 +2014,6 @@ bool initialize() {
 	}
 
 	scene_uniform_buffer_memory = static_cast<SceneUniforms*>(scene_uniform_data);
-
-	void* model_uniform_data = nullptr;
-
-	if (vmaMapMemory(context.allocator, model_uniform_buffer_allocation,
-			&model_uniform_data) != VK_SUCCESS) {
-		std::cerr << "Failed to map model uniform buffer memory\n";
-		return false;
-	}
-
-	model_uniform_buffer_memory = static_cast<ModelUniforms*>(model_uniform_data);
-
-	void* model_uniform_data_2 = nullptr;
-
-	if (vmaMapMemory(context.allocator, model_uniform_buffer_2_allocation,
-			&model_uniform_data_2) != VK_SUCCESS) {
-		std::cerr << "Failed to map second model uniform buffer memory\n";
-		return false;
-	}
-
-	model_uniform_buffer_2_memory = static_cast<ModelUniforms*>(model_uniform_data_2);
 
 	const VkBufferCreateInfo point_lights_buffer_create_info = {
 		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -825,9 +2102,9 @@ bool initialize() {
 	);
 
 	// Начальное положение и ориентация пирамиды
-	model_uniform_buffer_memory->model = glm::mat4(1.0f);
+	get_dynamic_model_uniform(0).model = glm::mat4(1.0f);
 
-	model_uniform_buffer_2_memory->model = glm::translate(
+	get_dynamic_model_uniform(1).model = glm::translate(
 		glm::mat4(1.0f),
 		glm::vec3(1.5f, 0.0f, 0.0f)
 	);
@@ -878,15 +2155,43 @@ bool initialize() {
 
 	const VkDescriptorSetLayoutBinding model_uniform_binding = {
 		.binding = 0,
-		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
 		.descriptorCount = 1,
 		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 	};
 
+	const VkDescriptorSetLayoutBinding model_texture_binding = {
+		.binding = 1,
+		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		.descriptorCount = 1,
+		.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+	};
+
+	const VkDescriptorSetLayoutBinding model_specular_binding = {
+		.binding = 2,
+		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		.descriptorCount = 1,
+		.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+	};
+
+	const VkDescriptorSetLayoutBinding model_emissive_binding = {
+		.binding = 3,
+		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		.descriptorCount = 1,
+		.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+	};
+
+	const VkDescriptorSetLayoutBinding model_bindings[] = {
+		model_uniform_binding,
+		model_texture_binding,
+		model_specular_binding,
+		model_emissive_binding,
+	};
+
 	const VkDescriptorSetLayoutCreateInfo model_descriptor_set_layout_info = {
 		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-		.bindingCount = 1,
-		.pBindings = &model_uniform_binding,
+		.bindingCount = 4,
+		.pBindings = model_bindings,
 	};
 
 	if (vkCreateDescriptorSetLayout(
@@ -902,18 +2207,26 @@ bool initialize() {
 	const VkDescriptorPoolSize descriptor_pool_sizes[] = {
 		{
 			.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-			.descriptorCount = 3,
+			.descriptorCount = 1,
+		},
+		{
+			.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+			.descriptorCount = 2,
 		},
 		{
 			.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 			.descriptorCount = 2,
+		},
+		{
+			.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			.descriptorCount = 6,
 		},
 	};
 
 	const VkDescriptorPoolCreateInfo descriptor_pool_info = {
 		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
 		.maxSets = 3,
-		.poolSizeCount = 2,
+		.poolSizeCount = 4,
 		.pPoolSizes = descriptor_pool_sizes,
 	};
 
@@ -991,15 +2304,45 @@ bool initialize() {
 	};
 
 	VkDescriptorBufferInfo model_uniform_buffer_info = {
-		.buffer = model_uniform_buffer,
+		.buffer = dynamic_model_uniform_buffer,
 		.offset = 0,
 		.range = sizeof(ModelUniforms),
 	};
 
 	VkDescriptorBufferInfo model_uniform_buffer_info_2 = {
-		.buffer = model_uniform_buffer_2,
+		.buffer = dynamic_model_uniform_buffer,
 		.offset = 0,
 		.range = sizeof(ModelUniforms),
+	};
+
+	VkDescriptorImageInfo albedo_texture_info = {
+		.sampler = albedo_texture_sampler,
+		.imageView = albedo_texture_view,
+		.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	};
+
+	VkDescriptorImageInfo second_albedo_texture_info = {
+		.sampler = albedo_texture_sampler,
+		.imageView = second_albedo_texture_view,
+		.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	};
+
+	VkDescriptorImageInfo black_fallback_texture_info = {
+		.sampler = albedo_texture_sampler,
+		.imageView = black_fallback_texture_view,
+		.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	};
+
+	VkDescriptorImageInfo specular_texture_info = {
+		.sampler = albedo_texture_sampler,
+		.imageView = specular_texture_view,
+		.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	};
+
+	VkDescriptorImageInfo emissive_texture_info = {
+		.sampler = albedo_texture_sampler,
+		.imageView = emissive_texture_view,
+		.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 	};
 
 	// Описываем изменение descriptor set
@@ -1017,7 +2360,7 @@ bool initialize() {
 		.dstSet = model_descriptor_set,
 		.dstBinding = 0,
 		.descriptorCount = 1,
-		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
 		.pBufferInfo = &model_uniform_buffer_info,
 	};
 
@@ -1026,8 +2369,62 @@ bool initialize() {
 		.dstSet = model_descriptor_set_2,
 		.dstBinding = 0,
 		.descriptorCount = 1,
-		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
 		.pBufferInfo = &model_uniform_buffer_info_2,
+	};
+
+	VkWriteDescriptorSet model_texture_write = {
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		.dstSet = model_descriptor_set,
+		.dstBinding = 1,
+		.descriptorCount = 1,
+		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		.pImageInfo = &albedo_texture_info,
+	};
+
+	VkWriteDescriptorSet model_texture_write_2 = {
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		.dstSet = model_descriptor_set_2,
+		.dstBinding = 1,
+		.descriptorCount = 1,
+		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		.pImageInfo = &second_albedo_texture_info,
+	};
+
+	VkWriteDescriptorSet specular_texture_write = {
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		.dstSet = model_descriptor_set,
+		.dstBinding = 2,
+		.descriptorCount = 1,
+		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		.pImageInfo = &black_fallback_texture_info,
+	};
+
+	VkWriteDescriptorSet specular_texture_write_2 = {
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		.dstSet = model_descriptor_set_2,
+		.dstBinding = 2,
+		.descriptorCount = 1,
+		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		.pImageInfo = &specular_texture_info,
+	};
+
+	VkWriteDescriptorSet emissive_texture_write = {
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		.dstSet = model_descriptor_set,
+		.dstBinding = 3,
+		.descriptorCount = 1,
+		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		.pImageInfo = &black_fallback_texture_info,
+	};
+
+	VkWriteDescriptorSet emissive_texture_write_2 = {
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		.dstSet = model_descriptor_set_2,
+		.dstBinding = 3,
+		.descriptorCount = 1,
+		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		.pImageInfo = &emissive_texture_info,
 	};
 
 	VkWriteDescriptorSet point_lights_descriptor_write = {
@@ -1054,10 +2451,16 @@ bool initialize() {
 		model_descriptor_write_2,
 		point_lights_descriptor_write,
 		spot_light_descriptor_write,
+		model_texture_write,
+		model_texture_write_2,
+		specular_texture_write,
+		specular_texture_write_2,
+		emissive_texture_write,
+		emissive_texture_write_2,
 	};
 
 	// Записываем информацию в descriptor set
-	vkUpdateDescriptorSets(context.device, 5, descriptor_writes, 0, nullptr);
+	vkUpdateDescriptorSets(context.device, 11, descriptor_writes, 0, nullptr);
 
 	const VkDescriptorSetLayout pipeline_set_layouts[] = {
 		scene_descriptor_set_layout,
@@ -1067,7 +2470,7 @@ bool initialize() {
 	const VkPushConstantRange visualization_push_constant_range = {
 		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 		.offset = 0,
-		.size = sizeof(glm::mat4) + sizeof(glm::vec4) + sizeof(float),
+		.size = sizeof(glm::mat4) + sizeof(glm::vec4) + 3 * sizeof(float),
 	};
 
 	const VkPipelineLayoutCreateInfo pipeline_layout_info = {
@@ -1102,7 +2505,7 @@ bool initialize() {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
 		.vertexBindingDescriptionCount = 1,
 		.pVertexBindingDescriptions = &vertex_binding,
-		.vertexAttributeDescriptionCount = 2,
+		.vertexAttributeDescriptionCount = 3,
 		.pVertexAttributeDescriptions = vertex_attributes,
 	};
 
@@ -1201,7 +2604,7 @@ bool initialize() {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
 		.vertexBindingDescriptionCount = 1,
 		.pVertexBindingDescriptions = &light_line_vertex_binding,
-		.vertexAttributeDescriptionCount = 2,
+		.vertexAttributeDescriptionCount = 3,
 		.pVertexAttributeDescriptions = light_line_vertex_attributes,
 	};
 
@@ -1481,15 +2884,21 @@ void shutdown() {
 	vkDestroyShaderModule(context.device, fragment_shader_module, nullptr);
 
 	vmaUnmapMemory(context.allocator, scene_uniform_buffer_allocation);
-	vmaUnmapMemory(context.allocator, model_uniform_buffer_allocation);
-	vmaUnmapMemory(context.allocator, model_uniform_buffer_2_allocation);
-
 	vmaDestroyBuffer(context.allocator, scene_uniform_buffer, scene_uniform_buffer_allocation);
-	vmaDestroyBuffer(context.allocator, model_uniform_buffer, model_uniform_buffer_allocation);
-	vmaDestroyBuffer(context.allocator, model_uniform_buffer_2, model_uniform_buffer_2_allocation);
 	
 	vmaDestroyBuffer(context.allocator, vertex_buffer, vertex_buffer_allocation);
 	vmaDestroyBuffer(context.allocator, index_buffer, index_buffer_allocation);
+
+	if (dynamic_model_uniform_buffer_memory != nullptr) {
+		vmaUnmapMemory(context.allocator, dynamic_model_uniform_buffer_allocation);
+		dynamic_model_uniform_buffer_memory = nullptr;
+	}
+
+	if (dynamic_model_uniform_buffer != VK_NULL_HANDLE) {
+		vmaDestroyBuffer(context.allocator, dynamic_model_uniform_buffer, dynamic_model_uniform_buffer_allocation);
+		dynamic_model_uniform_buffer = VK_NULL_HANDLE;
+		dynamic_model_uniform_buffer_allocation = VK_NULL_HANDLE;
+	}
 
 	vmaDestroyBuffer(context.allocator, light_visualization_vertex_buffer, light_visualization_vertex_buffer_allocation);
 	vmaDestroyBuffer(context.allocator, light_visualization_index_buffer, light_visualization_index_buffer_allocation);
@@ -1502,6 +2911,111 @@ void shutdown() {
 
 	vmaUnmapMemory(context.allocator, spot_light_buffer_allocation);
 	vmaDestroyBuffer(context.allocator, spot_light_buffer, spot_light_buffer_allocation);
+
+	if (albedo_texture_sampler != VK_NULL_HANDLE) {
+		vkDestroySampler(context.device, albedo_texture_sampler, nullptr);
+		albedo_texture_sampler = VK_NULL_HANDLE;
+	}
+
+	if (albedo_texture_view != VK_NULL_HANDLE) {
+		vkDestroyImageView(context.device, albedo_texture_view, nullptr);
+		albedo_texture_view = VK_NULL_HANDLE;
+	}
+
+	if (second_albedo_texture_view != VK_NULL_HANDLE) {
+		vkDestroyImageView(
+			context.device,
+			second_albedo_texture_view,
+			nullptr
+		);
+		second_albedo_texture_view = VK_NULL_HANDLE;
+	}
+
+	if (black_fallback_texture_view != VK_NULL_HANDLE) {
+		vkDestroyImageView(
+			context.device,
+			black_fallback_texture_view,
+			nullptr
+		);
+		black_fallback_texture_view = VK_NULL_HANDLE;
+	}
+
+	if (specular_texture_view != VK_NULL_HANDLE) {
+		vkDestroyImageView(
+			context.device,
+			specular_texture_view,
+			nullptr
+		);
+		specular_texture_view = VK_NULL_HANDLE;
+	}
+
+	if (emissive_texture_view != VK_NULL_HANDLE) {
+		vkDestroyImageView(
+			context.device,
+			emissive_texture_view,
+			nullptr
+		);
+		emissive_texture_view = VK_NULL_HANDLE;
+	}
+
+	if (albedo_texture_image != VK_NULL_HANDLE) {
+		vmaDestroyImage(
+			graphics::internal::context.allocator,
+			albedo_texture_image,
+			albedo_texture_allocation
+		);
+	}
+
+	if (second_albedo_texture_image != VK_NULL_HANDLE) {
+		vmaDestroyImage(
+			context.allocator,
+			second_albedo_texture_image,
+			second_albedo_texture_allocation
+		);
+		second_albedo_texture_image = VK_NULL_HANDLE;
+		second_albedo_texture_allocation = VK_NULL_HANDLE;
+	}
+
+	if (black_fallback_texture_image != VK_NULL_HANDLE) {
+		vmaDestroyImage(
+			context.allocator,
+			black_fallback_texture_image,
+			black_fallback_texture_allocation
+		);
+		black_fallback_texture_image = VK_NULL_HANDLE;
+		black_fallback_texture_allocation = VK_NULL_HANDLE;
+	}
+
+	if (specular_texture_image != VK_NULL_HANDLE) {
+		vmaDestroyImage(
+			context.allocator,
+			specular_texture_image,
+			specular_texture_allocation
+		);
+		specular_texture_image = VK_NULL_HANDLE;
+		specular_texture_allocation = VK_NULL_HANDLE;
+	}
+
+	if (emissive_texture_image != VK_NULL_HANDLE) {
+		vmaDestroyImage(
+			context.allocator,
+			emissive_texture_image,
+			emissive_texture_allocation
+		);
+		emissive_texture_image = VK_NULL_HANDLE;
+		emissive_texture_allocation = VK_NULL_HANDLE;
+	}
+
+	if (texture_staging_buffer != VK_NULL_HANDLE) {
+		vmaDestroyBuffer(
+			graphics::internal::context.allocator,
+			texture_staging_buffer,
+			texture_staging_allocation
+		);
+
+		texture_staging_buffer = VK_NULL_HANDLE;
+		texture_staging_allocation = VK_NULL_HANDLE;
+	}
 }
 
 void update(double time) {
@@ -1596,7 +3110,7 @@ void update(double time) {
 		pyramid_scale
 	);
 
-	model_uniform_buffer_memory->model = model;
+	get_dynamic_model_uniform(0).model = model;
 
 	glm::vec3 second_animated_position;
 
@@ -1625,7 +3139,7 @@ void update(double time) {
 		glm::vec3(0.0f, 1.0f, 0.0f)
 	);
 
-	model_uniform_buffer_2_memory->model = second_model;
+	get_dynamic_model_uniform(1).model = second_model;
 
 	float aspect_ratio =
 		static_cast<float>(graphics::internal::context.swapchain_extent.width) /
@@ -1652,6 +3166,16 @@ void update(double time) {
 	scene_uniform_buffer_memory->projection[1][1] *= -1.0f;
 
 	ImGui::Begin("Pyramid");
+
+	if (ImGui::CollapsingHeader(
+			"Texture Effect",
+			ImGuiTreeNodeFlags_DefaultOpen
+		)) {
+		ImGui::Checkbox(
+			"Enable Sampling Effect",
+			&sampling_effect_enabled
+		);
+	}
 
 	if (ImGui::CollapsingHeader("Animation", ImGuiTreeNodeFlags_DefaultOpen)) {
 		if (animation_playing) {
@@ -1728,6 +3252,25 @@ void update(double time) {
 	}
 
 	if (ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen)) {
+		const char* texture_options[] = {
+			"check.png",
+			"second.png",
+		};
+
+		ImGui::Combo(
+			"First Pyramid Texture",
+			&pyramid_texture_index,
+			texture_options,
+			2
+		);
+
+		ImGui::Combo(
+			"Second Pyramid Texture",
+			&second_pyramid_texture_index,
+			texture_options,
+			2
+		);
+
 		ImGui::ColorEdit3(
 			"Albedo",
 			&pyramid_albedo.x
@@ -1769,7 +3312,7 @@ void update(double time) {
 	if (ImGui::CollapsingHeader("Point Lights", ImGuiTreeNodeFlags_DefaultOpen)) {
 		if (ImGui::Button("Add Point Light")) {
 			point_lights.push_back({
-				glm::vec4(0.0f, 2.0f, 2.0f, 1.0f),
+				glm::vec4(2.0f, 0.0f, -0.5f, 1.0f),
 				glm::vec4(1.0f, 1.0f, 1.0f, 5.0f)
 			});
 
@@ -1820,8 +3363,8 @@ void update(double time) {
 	if (ImGui::CollapsingHeader("Spot Lights")) {
 		if (ImGui::Button("Add Spot Light")) {
 			spot_lights.push_back({
-				glm::vec4(0.0f, 3.0f, 2.0f, 1.0f),
-				glm::vec4(0.0f, -1.0f, 0.0f, 0.0f),
+				glm::vec4(1.3f, 1.0f, -0.5f, 1.0f),
+				glm::vec4(-0.6f, -0.8f, 0.0f, 0.0f),
 				glm::vec4(1.0f, 1.0f, 1.0f, 5.0f),
 				glm::vec4(
 					glm::radians(15.0f),
@@ -1953,30 +3496,30 @@ void update(double time) {
 		sizeof(SpotLight) * spot_lights.size()
 	);
 
-	model_uniform_buffer_memory->albedo = glm::vec4(
+	get_dynamic_model_uniform(0).albedo = glm::vec4(
 		pyramid_albedo,
 		1.0f
 	);
 
-	model_uniform_buffer_memory->specular_color = glm::vec4(
+	get_dynamic_model_uniform(0).specular_color = glm::vec4(
 		pyramid_specular_color,
 		1.0f
 	);
 
-	model_uniform_buffer_memory->specular_coefficient =
+	get_dynamic_model_uniform(0).specular_coefficient =
     	pyramid_specular_coefficient;
 
-	model_uniform_buffer_2_memory->albedo = glm::vec4(
+	get_dynamic_model_uniform(1).albedo = glm::vec4(
 		second_pyramid_albedo,
 		1.0f
 	);
 
-	model_uniform_buffer_2_memory->specular_color = glm::vec4(
+	get_dynamic_model_uniform(1).specular_color = glm::vec4(
 		second_pyramid_specular_color,
 		1.0f
 	);
 
-	model_uniform_buffer_2_memory->specular_coefficient =
+	get_dynamic_model_uniform(1).specular_coefficient =
    		second_pyramid_specular_coefficient;
 
 	scene_uniform_buffer_memory->camera_position =
@@ -2054,7 +3597,14 @@ void render(const graphics::internal::FrameData& fd) {
 		pipeline_layout,
 		0,                  
 		1,                  
-		&scene_descriptor_set, 0, nullptr);
+		&scene_descriptor_set, 0, nullptr
+	);
+
+	const uint32_t first_model_offset = 0;	
+	const VkDescriptorSet material_descriptor_sets[] = {
+		model_descriptor_set,
+		model_descriptor_set_2,
+	};
 
 	vkCmdBindDescriptorSets(
 		command_buffer,
@@ -2062,9 +3612,9 @@ void render(const graphics::internal::FrameData& fd) {
 		pipeline_layout,
 		1,
 		1,
-		&model_descriptor_set,
-		0,
-		nullptr
+		&material_descriptor_sets[pyramid_texture_index],
+		1,
+		&first_model_offset
 	);
 
 	VkDeviceSize vertex_offset = 0;
@@ -2088,13 +3638,23 @@ void render(const graphics::internal::FrameData& fd) {
 		glm::mat4 model;
 		glm::vec4 color;
 		float enabled;
+		float sampling_effect_enabled;
+		float time;
 	};
 
 	VisualizationPushConstants visualization_push_constants = {
 		glm::mat4(1.0f),
 		glm::vec4(1.0f),
-		0.0f
+		0.0f,
+		0.0f,
+		0.0f,
 	};
+
+	visualization_push_constants.sampling_effect_enabled =
+		sampling_effect_enabled ? 1.0f : 0.0f;
+
+	visualization_push_constants.time =
+		static_cast<float>(animation_time);
 
 	vkCmdPushConstants(
 		command_buffer,
@@ -2114,16 +3674,21 @@ void render(const graphics::internal::FrameData& fd) {
 		0
 	);
 
+	const uint32_t second_model_offset =
+    	static_cast<uint32_t>(model_uniform_stride);
+
 	vkCmdBindDescriptorSets(
 		command_buffer,
 		VK_PIPELINE_BIND_POINT_GRAPHICS,
 		pipeline_layout,
 		1,
 		1,
-		&model_descriptor_set_2,
-		0,
-		nullptr
+		&material_descriptor_sets[second_pyramid_texture_index],
+		1,
+		&second_model_offset
 	);
+
+	visualization_push_constants.sampling_effect_enabled = 0.0f;
 
 	vkCmdPushConstants(
 		command_buffer,
