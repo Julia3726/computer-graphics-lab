@@ -7,8 +7,12 @@ layout(location = 2) in vec2 in_uv;
 layout(location = 0) out vec3 world_position;
 layout(location = 1) out vec3 normal;
 layout(location = 2) out vec2 uv;
+layout(location = 3) out vec4 shadow_position;
+layout(location = 4) out vec4 spot_shadow_position;
 
 layout(set = 0, binding = 0) uniform SceneUniforms {
+    mat4 shadow_view_projection;
+    mat4 spot_shadow_view_projection;
     mat4 view;
     mat4 projection;
     vec4 light_direction;
@@ -38,12 +42,18 @@ void main() {
     if (visualization.enabled > 0.5) {
         position = visualization.model * vec4(in_position, 1.0);
         world_position = position.xyz;
-        normal = in_normal;
+        normal = normalize(transpose(inverse(mat3(visualization.model))) * in_normal);
     } else {
         position = model_uniforms.model * vec4(in_position, 1.0);
         world_position = position.xyz;
         normal = normalize(transpose(inverse(mat3(model_uniforms.model))) * in_normal);
     }
+
+    shadow_position =
+        scene_uniforms.shadow_view_projection * position;
+
+    spot_shadow_position =
+    scene_uniforms.spot_shadow_view_projection * position;
 
     gl_Position =
         scene_uniforms.projection *

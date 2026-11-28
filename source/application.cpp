@@ -23,11 +23,13 @@ struct Vertex {
 };
 
 struct SceneUniforms {
+	glm::mat4 shadow_view_projection;
+	glm::mat4 spot_shadow_view_projection;
     glm::mat4 view;
     glm::mat4 projection;
 
-    glm::vec4 light_direction;			// направление света
-    glm::vec4 light_color_intensity;	// цвет
+    glm::vec4 light_direction;			
+    glm::vec4 light_color_intensity;	
 
 	glm::vec4 camera_position;			
 };
@@ -112,35 +114,50 @@ const uint32_t indices[] = {
 };
 
 Vertex light_visualization_vertices[] = {
-    {{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}},
-    {{ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}},
-    {{ 0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}},
-    {{-0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}},
+    // Задняя грань, нормаль направлена назад
+    {{-0.5f, -0.5f, -0.5f}, { 0.0f,  0.0f, -1.0f}, {0.0f, 1.0f}},
+    {{ 0.5f, -0.5f, -0.5f}, { 0.0f,  0.0f, -1.0f}, {1.0f, 1.0f}},
+    {{ 0.5f,  0.5f, -0.5f}, { 0.0f,  0.0f, -1.0f}, {1.0f, 0.0f}},
+    {{-0.5f,  0.5f, -0.5f}, { 0.0f,  0.0f, -1.0f}, {0.0f, 0.0f}},
 
-    {{-0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 0.0f}},
-    {{ 0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 0.0f}},
-    {{ 0.5f,  0.5f,  0.5f}, {0.0f, 0.0f, 0.0f}},
-    {{-0.5f,  0.5f,  0.5f}, {0.0f, 0.0f, 0.0f}},
+    // Передняя грань
+    {{-0.5f, -0.5f,  0.5f}, { 0.0f,  0.0f,  1.0f}, {0.0f, 1.0f}},
+    {{ 0.5f, -0.5f,  0.5f}, { 0.0f,  0.0f,  1.0f}, {1.0f, 1.0f}},
+    {{ 0.5f,  0.5f,  0.5f}, { 0.0f,  0.0f,  1.0f}, {1.0f, 0.0f}},
+    {{-0.5f,  0.5f,  0.5f}, { 0.0f,  0.0f,  1.0f}, {0.0f, 0.0f}},
+
+    // Левая грань
+    {{-0.5f, -0.5f, -0.5f}, {-1.0f,  0.0f,  0.0f}, {0.0f, 1.0f}},
+    {{-0.5f, -0.5f,  0.5f}, {-1.0f,  0.0f,  0.0f}, {1.0f, 1.0f}},
+    {{-0.5f,  0.5f,  0.5f}, {-1.0f,  0.0f,  0.0f}, {1.0f, 0.0f}},
+    {{-0.5f,  0.5f, -0.5f}, {-1.0f,  0.0f,  0.0f}, {0.0f, 0.0f}},
+
+    // Правая грань
+    {{ 0.5f, -0.5f, -0.5f}, { 1.0f,  0.0f,  0.0f}, {0.0f, 1.0f}},
+    {{ 0.5f, -0.5f,  0.5f}, { 1.0f,  0.0f,  0.0f}, {1.0f, 1.0f}},
+    {{ 0.5f,  0.5f,  0.5f}, { 1.0f,  0.0f,  0.0f}, {1.0f, 0.0f}},
+    {{ 0.5f,  0.5f, -0.5f}, { 1.0f,  0.0f,  0.0f}, {0.0f, 0.0f}},
+
+    // Верхняя грань
+    {{-0.5f,  0.5f, -0.5f}, { 0.0f,  1.0f,  0.0f}, {0.0f, 1.0f}},
+    {{ 0.5f,  0.5f, -0.5f}, { 0.0f,  1.0f,  0.0f}, {1.0f, 1.0f}},
+    {{ 0.5f,  0.5f,  0.5f}, { 0.0f,  1.0f,  0.0f}, {1.0f, 0.0f}},
+    {{-0.5f,  0.5f,  0.5f}, { 0.0f,  1.0f,  0.0f}, {0.0f, 0.0f}},
+
+    // Нижняя грань
+    {{-0.5f, -0.5f, -0.5f}, { 0.0f, -1.0f,  0.0f}, {0.0f, 1.0f}},
+    {{ 0.5f, -0.5f, -0.5f}, { 0.0f, -1.0f,  0.0f}, {1.0f, 1.0f}},
+    {{ 0.5f, -0.5f,  0.5f}, { 0.0f, -1.0f,  0.0f}, {1.0f, 0.0f}},
+    {{-0.5f, -0.5f,  0.5f}, { 0.0f, -1.0f,  0.0f}, {0.0f, 0.0f}},
 };
 
 const uint32_t light_visualization_indices[] = {
-    0, 1, 2,
-    2, 3, 0,
-
-    4, 5, 6,
-    6, 7, 4,
-
-    0, 4, 7,
-    7, 3, 0,
-
-    1, 5, 6,
-    6, 2, 1,
-
-    3, 2, 6,
-    6, 7, 3,
-
-    0, 1, 5,
-    5, 4, 0,
+     0,  1,  2,   2,  3,  0,
+     4,  5,  6,   6,  7,  4,
+     8,  9, 10,  10, 11,  8,
+    12, 13, 14,  14, 15, 12,
+    16, 17, 18,  18, 19, 16,
+    20, 21, 22,  22, 23, 20,
 };
 
 void calculate_vertex_normals(Vertex* vertices) {
@@ -183,6 +200,21 @@ VkImageView specular_texture_view = VK_NULL_HANDLE;
 VkImage emissive_texture_image = VK_NULL_HANDLE;
 VmaAllocation emissive_texture_allocation = VK_NULL_HANDLE;
 VkImageView emissive_texture_view = VK_NULL_HANDLE;
+
+VkFormat shadow_depth_format = VK_FORMAT_UNDEFINED;
+
+constexpr uint32_t shadow_map_size = 4096;
+
+VkImage shadow_map_image = VK_NULL_HANDLE;
+VmaAllocation shadow_map_allocation = VK_NULL_HANDLE;
+VkImageView shadow_map_view = VK_NULL_HANDLE;
+VkSampler shadow_sampler = VK_NULL_HANDLE;
+bool shadow_map_initialized = false;
+
+VkImage spot_shadow_map_image = VK_NULL_HANDLE;
+VmaAllocation spot_shadow_map_allocation = VK_NULL_HANDLE;
+VkImageView spot_shadow_map_view = VK_NULL_HANDLE;
+bool spot_shadow_map_initialized = false;
 
 VkBuffer texture_staging_buffer = VK_NULL_HANDLE;
 VmaAllocation texture_staging_allocation = VK_NULL_HANDLE;
@@ -236,12 +268,15 @@ VkDescriptorSet model_descriptor_set = VK_NULL_HANDLE;
 VkDescriptorSet model_descriptor_set_2 = VK_NULL_HANDLE;
 
 VkPipelineLayout pipeline_layout = VK_NULL_HANDLE; // Описывает интерфейс конвейера с внешними ресурсами 
+
 VkPipeline graphics_pipeline = VK_NULL_HANDLE; 
+VkPipeline shadow_pipeline = VK_NULL_HANDLE;
 
 VkPipeline light_line_pipeline = VK_NULL_HANDLE;
 
 VkShaderModule vertex_shader_module = VK_NULL_HANDLE;
 VkShaderModule fragment_shader_module = VK_NULL_HANDLE;
+VkShaderModule shadow_vertex_shader_module = VK_NULL_HANDLE;
 
 bool use_perspective = true;
 bool show_light_visualization = true;
@@ -282,6 +317,9 @@ float second_pyramid_phase = glm::pi<float>();
 glm::vec3 light_direction = glm::vec3(-1.0f, -1.0f, -1.0f);		// по диагонали вниз и в сторону
 glm::vec3 light_color = glm::vec3(1.0f, 1.0f, 1.0f);			// белый свет
 float light_intensity = 1.0f;
+
+float shadow_projection_area = 4.0f;
+float shadow_depth_bias = 1.25f;		// Сдвиг глубины
 
 glm::vec3 point_light_position = glm::vec3(2.0f, 2.0f, 2.0f);
 glm::vec3 point_light_color = glm::vec3(1.0f, 1.0f, 1.0f);
@@ -923,6 +961,156 @@ namespace application {
 bool initialize() {
 	auto& context = graphics::internal::context;
 
+	const VkFormat shadow_depth_candidates[] = {
+		VK_FORMAT_D32_SFLOAT,
+		VK_FORMAT_D32_SFLOAT_S8_UINT,
+		VK_FORMAT_D24_UNORM_S8_UINT,
+		VK_FORMAT_D16_UNORM,
+	};
+
+	const VkFormatFeatureFlags required_shadow_features =
+		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
+		VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
+		VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+
+	for (VkFormat candidate : shadow_depth_candidates) {
+		VkFormatProperties format_properties{};
+
+		vkGetPhysicalDeviceFormatProperties(
+			context.physical_device,
+			candidate,
+			&format_properties
+		);
+
+		if ((format_properties.optimalTilingFeatures &
+			required_shadow_features) == required_shadow_features) {
+			shadow_depth_format = candidate;
+			break;
+		}
+	}
+
+	if (shadow_depth_format == VK_FORMAT_UNDEFINED) {
+		std::cerr << "No supported format for the shadow map\n";
+		return false;
+	}
+	
+	// Создаем изображение и выделяем для него память
+	const VkImageCreateInfo shadow_image_info = {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+		.imageType = VK_IMAGE_TYPE_2D,
+		.format = shadow_depth_format,
+		.extent = {
+			shadow_map_size,
+			shadow_map_size,
+			1
+		},
+		.mipLevels = 1,
+		.arrayLayers = 1,
+		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.tiling = VK_IMAGE_TILING_OPTIMAL,
+		.usage =
+			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+			VK_IMAGE_USAGE_SAMPLED_BIT,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+	};
+
+	const VmaAllocationCreateInfo shadow_allocation_info = {
+		.usage = VMA_MEMORY_USAGE_GPU_ONLY,
+	};
+
+	if (vmaCreateImage(
+			context.allocator,
+			&shadow_image_info,
+			&shadow_allocation_info,
+			&shadow_map_image,
+			&shadow_map_allocation,
+			nullptr
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create shadow map image\n";
+		return false;
+	}
+
+	// Создаем view для изображения (воспринимаем изображение как глубину)
+	const VkImageViewCreateInfo shadow_view_info = {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+		.image = shadow_map_image,
+		.viewType = VK_IMAGE_VIEW_TYPE_2D,
+		.format = shadow_depth_format,
+		.subresourceRange = {
+			.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1,
+		},
+	};
+
+	if (vkCreateImageView(
+			context.device,
+			&shadow_view_info,
+			nullptr,
+			&shadow_map_view
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create shadow map image view\n";
+		return false;
+	}
+
+	const VkImageCreateInfo spot_shadow_image_info =
+    	shadow_image_info;
+
+	if (vmaCreateImage(
+			context.allocator,
+			&spot_shadow_image_info,
+			&shadow_allocation_info,
+			&spot_shadow_map_image,
+			&spot_shadow_map_allocation,
+			nullptr
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create spot shadow map image\n";
+		return false;
+	}
+
+	VkImageViewCreateInfo spot_shadow_view_info =
+		shadow_view_info;
+	spot_shadow_view_info.image = spot_shadow_map_image;
+
+	if (vkCreateImageView(
+			context.device,
+			&spot_shadow_view_info,
+			nullptr,
+			&spot_shadow_map_view
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create spot shadow map image view\n";
+		return false;
+	}
+
+	const VkSamplerCreateInfo shadow_sampler_info = {
+		.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+		.magFilter = VK_FILTER_LINEAR,
+		.minFilter = VK_FILTER_LINEAR,
+		.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST,
+		.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+		.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+		.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+		.compareEnable = VK_TRUE,
+		.compareOp = VK_COMPARE_OP_LESS,							// сравнение глубины
+		.minLod = 0.0f,
+		.maxLod = 0.0f,
+		.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,			// за краем карты координаты будут считаться освещенными
+
+	};
+
+	if (vkCreateSampler(
+			context.device,
+			&shadow_sampler_info,
+			nullptr,
+			&shadow_sampler
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create shadow sampler\n";
+		return false;
+	}
+
 	VkPhysicalDeviceProperties device_properties{};
 	vkGetPhysicalDeviceProperties(
 		context.physical_device,
@@ -1141,16 +1329,21 @@ bool initialize() {
 
 	const auto vertex_shader_code = readFile("shaders/pyramid.vert.spv");
 	const auto fragment_shader_code = readFile("shaders/pyramid.frag.spv");
+	const auto shadow_vertex_shader_code = readFile("shaders/shadowmapping.vert.spv");
 
-	if (vertex_shader_code.empty() || fragment_shader_code.empty()) {
+	if (vertex_shader_code.empty() || 
+		fragment_shader_code.empty() || 
+		shadow_vertex_shader_code.empty()) {
 		return false;
 	}
 
 	vertex_shader_module = createShaderModule(vertex_shader_code, context.device);
 	fragment_shader_module = createShaderModule(fragment_shader_code, context.device);
+	shadow_vertex_shader_module = createShaderModule(shadow_vertex_shader_code, context.device);
 
 	if (vertex_shader_module == VK_NULL_HANDLE ||
-		fragment_shader_module == VK_NULL_HANDLE) {
+		fragment_shader_module == VK_NULL_HANDLE ||
+    	shadow_vertex_shader_module == VK_NULL_HANDLE) {
 		return false;
 	}
 
@@ -2131,15 +2324,33 @@ bool initialize() {
 		.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
 	};
 
+	const VkDescriptorSetLayoutBinding shadow_map_binding = {
+		.binding = 3,
+		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		.descriptorCount = 1,
+		.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+		.pImmutableSamplers = &shadow_sampler,
+	};
+
+	const VkDescriptorSetLayoutBinding spot_shadow_map_binding = {
+		.binding = 4,
+		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		.descriptorCount = 1,
+		.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+		.pImmutableSamplers = &shadow_sampler,
+	};
+
 	const VkDescriptorSetLayoutBinding scene_bindings[] = {
 		scene_uniform_binding,
 		point_lights_binding,
 		spot_light_binding,
+		shadow_map_binding,
+		spot_shadow_map_binding,
 	};
 
 	const VkDescriptorSetLayoutCreateInfo scene_descriptor_set_layout_info = {
 		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-		.bindingCount = 3,
+		.bindingCount = 5,
 		.pBindings = scene_bindings,
 	};
 
@@ -2219,7 +2430,7 @@ bool initialize() {
 		},
 		{
 			.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-			.descriptorCount = 6,
+			.descriptorCount = 8,
 		},
 	};
 
@@ -2345,6 +2556,18 @@ bool initialize() {
 		.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 	};
 
+	VkDescriptorImageInfo shadow_map_info = {
+		.sampler = VK_NULL_HANDLE,
+		.imageView = shadow_map_view,
+		.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	};
+
+	VkDescriptorImageInfo spot_shadow_map_info = {
+		.sampler = VK_NULL_HANDLE,
+		.imageView = spot_shadow_map_view,
+		.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	};
+
 	// Описываем изменение descriptor set
 	VkWriteDescriptorSet scene_descriptor_write = {
 		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -2445,6 +2668,24 @@ bool initialize() {
 		.pBufferInfo = &spot_light_buffer_info,
 	};
 
+	VkWriteDescriptorSet shadow_map_descriptor_write = {
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		.dstSet = scene_descriptor_set,
+		.dstBinding = 3,
+		.descriptorCount = 1,
+		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		.pImageInfo = &shadow_map_info,
+	};
+
+	VkWriteDescriptorSet spot_shadow_map_descriptor_write = {
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		.dstSet = scene_descriptor_set,
+		.dstBinding = 4,
+		.descriptorCount = 1,
+		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		.pImageInfo = &spot_shadow_map_info,
+	};
+
 	const VkWriteDescriptorSet descriptor_writes[] = {
 		scene_descriptor_write,
 		model_descriptor_write,
@@ -2457,10 +2698,12 @@ bool initialize() {
 		specular_texture_write_2,
 		emissive_texture_write,
 		emissive_texture_write_2,
+		shadow_map_descriptor_write,
+		spot_shadow_map_descriptor_write,
 	};
 
 	// Записываем информацию в descriptor set
-	vkUpdateDescriptorSets(context.device, 11, descriptor_writes, 0, nullptr);
+	vkUpdateDescriptorSets(context.device, 13, descriptor_writes, 0, nullptr);
 
 	const VkDescriptorSetLayout pipeline_set_layouts[] = {
 		scene_descriptor_set_layout,
@@ -2591,6 +2834,99 @@ bool initialize() {
 	if (vkCreateGraphicsPipelines(context.device, VK_NULL_HANDLE, 1,
 			&pipeline_info, nullptr, &graphics_pipeline) != VK_SUCCESS) {
 		std::cerr << "Failed to create graphics pipeline\n";
+		return false;
+	}
+
+	// создаем shadow pipeline
+	const VkPipelineShaderStageCreateInfo shadow_shader_stage = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+		.stage = VK_SHADER_STAGE_VERTEX_BIT,
+		.module = shadow_vertex_shader_module,
+		.pName = "main",
+	};
+
+	const VkVertexInputAttributeDescription shadow_position_attribute = {
+		.location = 0,
+		.binding = 0,
+		.format = VK_FORMAT_R32G32B32_SFLOAT,
+		.offset = offsetof(Vertex, position),
+	};
+
+	const VkPipelineVertexInputStateCreateInfo shadow_vertex_input = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+		.vertexBindingDescriptionCount = 1,
+		.pVertexBindingDescriptions = &vertex_binding,
+		.vertexAttributeDescriptionCount = 1,
+		.pVertexAttributeDescriptions = &shadow_position_attribute,
+	};
+
+	const VkPipelineRasterizationStateCreateInfo shadow_rasterizer = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+		.depthClampEnable = VK_FALSE,
+		.rasterizerDiscardEnable = VK_FALSE,
+		.polygonMode = VK_POLYGON_MODE_FILL,
+		.cullMode = VK_CULL_MODE_NONE,
+		.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+		.depthBiasEnable = VK_TRUE,
+		.lineWidth = 1.0f,
+	};
+
+	const VkPipelineColorBlendStateCreateInfo shadow_color_blending = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+		.logicOpEnable = VK_FALSE,
+		.attachmentCount = 0,
+		.pAttachments = nullptr,
+	};
+
+	const VkDynamicState shadow_dynamic_states[] = {
+		VK_DYNAMIC_STATE_VIEWPORT,
+		VK_DYNAMIC_STATE_SCISSOR,
+		VK_DYNAMIC_STATE_DEPTH_BIAS,		// разрешает задавать смещение глубины при рисовании
+	};
+
+	const VkPipelineDynamicStateCreateInfo shadow_dynamic_state = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+		.dynamicStateCount = 3,
+		.pDynamicStates = shadow_dynamic_states,
+	};
+
+	const VkPipelineRenderingCreateInfo shadow_rendering_info = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+		.viewMask = 0,
+		.colorAttachmentCount = 0,									// конвейер не выводит цвет
+		.pColorAttachmentFormats = nullptr,
+		.depthAttachmentFormat = shadow_depth_format,				// работает с картой глубины
+		.stencilAttachmentFormat = VK_FORMAT_UNDEFINED,
+	};
+
+	const VkGraphicsPipelineCreateInfo shadow_pipeline_info = {
+		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+		.pNext = &shadow_rendering_info,
+		.stageCount = 1,								
+		.pStages = &shadow_shader_stage,							// используем только вершинный шейдер
+		.pVertexInputState = &shadow_vertex_input,
+		.pInputAssemblyState = &input_assembly,
+		.pViewportState = &viewport_state,
+		.pRasterizationState = &shadow_rasterizer,
+		.pMultisampleState = &multisampling,
+		.pDepthStencilState = &depth_stencil,
+		.pColorBlendState = &shadow_color_blending,
+		.pDynamicState = &shadow_dynamic_state,
+		.layout = pipeline_layout,
+		.renderPass = VK_NULL_HANDLE,
+		.subpass = 0,
+		.basePipelineIndex = -1,
+	};
+
+	if (vkCreateGraphicsPipelines(
+			context.device,
+			VK_NULL_HANDLE,
+			1,
+			&shadow_pipeline_info,
+			nullptr,
+			&shadow_pipeline
+		) != VK_SUCCESS) {
+		std::cerr << "Failed to create shadow graphics pipeline\n";
 		return false;
 	}
 
@@ -2872,6 +3208,7 @@ void shutdown() {
 	vkQueueWaitIdle(context.graphics_queue);
 
 	vkDestroyPipeline(context.device, graphics_pipeline, nullptr);
+	vkDestroyPipeline(context.device, shadow_pipeline, nullptr);
 	vkDestroyPipeline(context.device, light_line_pipeline, nullptr);
 
 	vkDestroyPipelineLayout(context.device, pipeline_layout, nullptr);
@@ -2882,6 +3219,7 @@ void shutdown() {
 
 	vkDestroyShaderModule(context.device, vertex_shader_module, nullptr);
 	vkDestroyShaderModule(context.device, fragment_shader_module, nullptr);
+	vkDestroyShaderModule(context.device, shadow_vertex_shader_module, nullptr);
 
 	vmaUnmapMemory(context.allocator, scene_uniform_buffer_allocation);
 	vmaDestroyBuffer(context.allocator, scene_uniform_buffer, scene_uniform_buffer_allocation);
@@ -2915,6 +3253,11 @@ void shutdown() {
 	if (albedo_texture_sampler != VK_NULL_HANDLE) {
 		vkDestroySampler(context.device, albedo_texture_sampler, nullptr);
 		albedo_texture_sampler = VK_NULL_HANDLE;
+	}
+
+	if (shadow_sampler != VK_NULL_HANDLE) {
+		vkDestroySampler(context.device, shadow_sampler, nullptr);
+		shadow_sampler = VK_NULL_HANDLE;
 	}
 
 	if (albedo_texture_view != VK_NULL_HANDLE) {
@@ -2956,6 +3299,24 @@ void shutdown() {
 			nullptr
 		);
 		emissive_texture_view = VK_NULL_HANDLE;
+	}
+
+	if (shadow_map_view != VK_NULL_HANDLE) {
+		vkDestroyImageView(
+			context.device,
+			shadow_map_view,
+			nullptr
+		);
+		shadow_map_view = VK_NULL_HANDLE;
+	}
+
+	if (spot_shadow_map_view != VK_NULL_HANDLE) {
+		vkDestroyImageView(
+			context.device,
+			spot_shadow_map_view,
+			nullptr
+		);
+		spot_shadow_map_view = VK_NULL_HANDLE;
 	}
 
 	if (albedo_texture_image != VK_NULL_HANDLE) {
@@ -3015,6 +3376,26 @@ void shutdown() {
 
 		texture_staging_buffer = VK_NULL_HANDLE;
 		texture_staging_allocation = VK_NULL_HANDLE;
+	}
+
+	if (shadow_map_image != VK_NULL_HANDLE) {
+		vmaDestroyImage(
+			context.allocator,
+			shadow_map_image,
+			shadow_map_allocation
+		);
+		shadow_map_image = VK_NULL_HANDLE;
+		shadow_map_allocation = VK_NULL_HANDLE;
+	}
+
+	if (spot_shadow_map_image != VK_NULL_HANDLE) {
+		vmaDestroyImage(
+			context.allocator,
+			spot_shadow_map_image,
+			spot_shadow_map_allocation
+		);
+		spot_shadow_map_image = VK_NULL_HANDLE;
+		spot_shadow_map_allocation = VK_NULL_HANDLE;
 	}
 }
 
@@ -3079,7 +3460,61 @@ void update(double time) {
 			light_color,
 			light_intensity
 		);
+
+	const glm::vec3 shadow_target(0.0f, 0.0f, -1.0f);
+	const glm::vec3 light_ray_direction =
+		glm::normalize(light_direction);
+
+	const glm::vec3 shadow_camera_position =
+		shadow_target - light_ray_direction * 10.0f;
+
+	glm::mat4 shadow_view = glm::lookAtRH(
+		shadow_camera_position,
+		shadow_target,
+		glm::vec3(0.0f, 1.0f, 0.0f)
+	);
+
+	glm::mat4 shadow_projection = glm::orthoRH_ZO(
+		-shadow_projection_area,
+		shadow_projection_area,
+		-shadow_projection_area,
+		shadow_projection_area,
+		0.1f,
+		30.0f
+	);
+
+	shadow_projection[1][1] *= -1.0f;
+
+	// Преобразование точки из мировых координат в пространство карты теней
+	scene_uniform_buffer_memory->shadow_view_projection =
+		shadow_projection * shadow_view;
 	
+	// Вычисляем матрицу с точки зрения первого прожектора
+	const SpotLight& shadow_spot = spot_lights[0];
+
+	const glm::vec3 spot_position(shadow_spot.position);
+	const glm::vec3 spot_direction =
+		glm::normalize(glm::vec3(shadow_spot.direction));
+
+	const glm::mat4 spot_view = glm::lookAtRH(
+		spot_position,
+		spot_position + spot_direction,
+		glm::vec3(0.0f, 1.0f, 0.0f)
+	);
+
+	// Строим область в форме конуса 
+	glm::mat4 spot_projection = glm::perspectiveRH_ZO(
+		2.0f * shadow_spot.angles.y,					// Угол обзора
+		1.0f,
+		0.1f,
+		20.0f
+	);
+
+	spot_projection[1][1] *= -1.0f;
+
+	scene_uniform_buffer_memory->spot_shadow_view_projection =
+		spot_projection * spot_view;
+
     glm::mat4 model = glm::mat4(1.0f);
 
 	model = glm::translate(
@@ -3304,6 +3739,22 @@ void update(double time) {
 		ImGui::SliderFloat(
 			"Light Intensity",
 			&light_intensity,
+			0.0f,
+			5.0f
+		);
+	}
+
+	if (ImGui::CollapsingHeader("Shadow Mapping")) {
+		ImGui::SliderFloat(
+			"Orthographic Projection Area",
+			&shadow_projection_area,
+			1.0f,
+			20.0f
+		);
+
+		ImGui::SliderFloat(
+			"Depth Bias",
+			&shadow_depth_bias,
 			0.0f,
 			5.0f
 		);
@@ -3543,6 +3994,690 @@ void render(const graphics::internal::FrameData& fd) {
 
     vkBeginCommandBuffer(command_buffer, &command_buffer_begin);
 
+	const VkPipelineStageFlags shadow_source_stage =
+		shadow_map_initialized
+			? VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+			: VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
+	const VkAccessFlags shadow_source_access =
+		shadow_map_initialized
+			? VK_ACCESS_SHADER_READ_BIT
+			: 0;
+
+	const VkImageLayout shadow_old_layout =
+		shadow_map_initialized
+			? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+			: VK_IMAGE_LAYOUT_UNDEFINED;
+
+	// Барьер перед записью глубины
+	const VkImageMemoryBarrier shadow_to_depth_barrier = {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+		.srcAccessMask = shadow_source_access,
+		.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+		.oldLayout = shadow_old_layout,
+		.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.image = shadow_map_image,
+		.subresourceRange = {
+			.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1,
+		},
+	};
+
+	vkCmdPipelineBarrier(
+		command_buffer,
+		shadow_source_stage,
+		VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+			VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+		0,
+		0, nullptr,
+		0, nullptr,
+		1, &shadow_to_depth_barrier
+	);
+
+	// Подключаем dynamic rendering 
+	VkRenderingAttachmentInfo shadow_depth_attachment{};
+	shadow_depth_attachment.sType =
+		VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+	shadow_depth_attachment.imageView = shadow_map_view;
+	shadow_depth_attachment.imageLayout =
+		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	shadow_depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;		// Очищщаем карту
+	shadow_depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;		// Сохраняем после прохода результат
+	shadow_depth_attachment.clearValue.depthStencil = {1.0f, 0};
+
+	// Начало прохода
+	VkRenderingInfo shadow_rendering_info{};
+	shadow_rendering_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+	shadow_rendering_info.renderArea = {
+		{0, 0},
+		{shadow_map_size, shadow_map_size}
+	};
+	shadow_rendering_info.layerCount = 1;
+	shadow_rendering_info.pDepthAttachment = &shadow_depth_attachment;
+
+	vkCmdBeginRendering(command_buffer, &shadow_rendering_info);
+
+	vkCmdBindPipeline(
+		command_buffer,
+		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		shadow_pipeline
+	);
+
+	const VkViewport shadow_viewport = {
+		.x = 0.0f,
+		.y = 0.0f,
+		.width = static_cast<float>(shadow_map_size),
+		.height = static_cast<float>(shadow_map_size),
+		.minDepth = 0.0f,
+		.maxDepth = 1.0f,
+	};
+
+	vkCmdSetViewport(command_buffer, 0, 1, &shadow_viewport);
+
+	const VkRect2D shadow_scissor = {
+		.offset = {0, 0},
+		.extent = {shadow_map_size, shadow_map_size},
+	};
+
+	vkCmdSetScissor(command_buffer, 0, 1, &shadow_scissor);
+
+	vkCmdSetDepthBias(command_buffer, shadow_depth_bias, 0.0f, shadow_depth_bias);
+
+	vkCmdBindDescriptorSets(
+		command_buffer,
+		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		pipeline_layout,
+		0,
+		1,
+		&scene_descriptor_set,
+		0,
+		nullptr
+	);
+
+	VkDeviceSize shadow_vertex_offset = 0;
+
+	vkCmdBindVertexBuffers(
+		command_buffer,
+		0,
+		1,
+		&vertex_buffer,
+		&shadow_vertex_offset
+	);
+
+	vkCmdBindIndexBuffer(
+		command_buffer,
+		index_buffer,
+		0,
+		VK_INDEX_TYPE_UINT32
+	);
+
+	struct ShadowPushConstants {
+		glm::mat4 model;
+		float use_spot_shadow;
+	};
+
+	// "Как добавить один куб в уже открытый проход карты теней"
+	auto draw_shadow_cube = [&](
+		const glm::vec3& position,
+		const glm::vec3& size,
+		float use_spot_shadow
+	) {
+		VkDeviceSize cube_shadow_vertex_offset = 0;
+
+		vkCmdBindVertexBuffers(
+			command_buffer,
+			0,
+			1,
+			&light_visualization_vertex_buffer,
+			&cube_shadow_vertex_offset
+		);
+
+		vkCmdBindIndexBuffer(
+			command_buffer,
+			light_visualization_index_buffer,
+			0,
+			VK_INDEX_TYPE_UINT32
+		);
+
+		ShadowPushConstants cube_shadow_push = {
+			glm::translate(
+				glm::mat4(1.0f),
+				position + glm::vec3(0.0f, 0.0f, -0.8f)
+			) *
+			glm::scale(glm::mat4(1.0f), size),
+			use_spot_shadow
+		};
+
+		vkCmdPushConstants(
+			command_buffer,
+			pipeline_layout,
+			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+			0,
+			sizeof(ShadowPushConstants),
+			&cube_shadow_push
+		);
+
+		vkCmdDrawIndexed(
+			command_buffer,
+			static_cast<uint32_t>(
+				sizeof(light_visualization_indices) /
+				sizeof(light_visualization_indices[0])
+			),
+			1,
+			0,
+			0,
+			0
+		);
+	};
+
+	ShadowPushConstants first_shadow_push = {
+		get_dynamic_model_uniform(0).model,
+		0.0f
+	};
+
+	vkCmdPushConstants(
+		command_buffer,
+		pipeline_layout,
+		VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+		0,
+		sizeof(ShadowPushConstants),
+		&first_shadow_push
+	);
+
+	vkCmdDrawIndexed(
+		command_buffer,
+		static_cast<uint32_t>(sizeof(indices) / sizeof(indices[0])),
+		1,
+		0,
+		0,
+		0
+	);
+
+	ShadowPushConstants second_shadow_push = {
+		get_dynamic_model_uniform(1).model,
+		0.0f
+	};
+
+	vkCmdPushConstants(
+		command_buffer,
+		pipeline_layout,
+		VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+		0,
+		sizeof(ShadowPushConstants),
+		&second_shadow_push
+	);
+
+	vkCmdDrawIndexed(
+		command_buffer,
+		static_cast<uint32_t>(sizeof(indices) / sizeof(indices[0])),
+		1,
+		0,
+		0,
+		0
+	);
+
+	// Сиденье скамейки в карте солнца
+	draw_shadow_cube(
+		glm::vec3(-0.8f, -0.34f, -1.1f),
+		glm::vec3(1.35f, 0.1f, 0.32f),
+		0.0f
+	);
+
+	// Фасад и боковая стена
+	draw_shadow_cube(
+		glm::vec3(0.0f, 0.45f, -1.85f),
+		glm::vec3(5.8f, 2.3f, 0.15f),
+		0.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(2.82f, 0.45f, -1.85f),
+		glm::vec3(0.16f, 2.3f, 1.5f),
+		0.0f
+	);
+
+	// Дверь и окна 
+	draw_shadow_cube(
+		glm::vec3(0.0f, 0.03f, -1.72f),
+		glm::vec3(0.72f, 1.4f, 0.07f),
+		0.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(-1.35f, 0.75f, -1.72f),
+		glm::vec3(0.9f, 0.72f, 0.08f),
+		0.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(-1.35f, 0.75f, -1.68f),
+		glm::vec3(0.76f, 0.58f, 0.03f),
+		0.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(1.75f, 0.75f, -1.72f),
+		glm::vec3(0.9f, 0.72f, 0.08f),
+		0.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(1.75f, 0.75f, -1.68f),
+		glm::vec3(0.76f, 0.58f, 0.03f),
+		0.0f
+	);
+
+	// Тротуар и бордюр
+	draw_shadow_cube(
+		glm::vec3(0.0f, -0.64f, -1.1f),
+		glm::vec3(6.0f, 0.12f, 1.0f),
+		0.0f
+	);
+
+	for (float x = -2.4f; x <= 2.4f; x += 0.8f) {
+		draw_shadow_cube(
+			glm::vec3(x, -0.575f, -1.1f),
+			glm::vec3(0.025f, 0.01f, 0.9f),
+			0.0f
+		);
+	}
+
+	draw_shadow_cube(
+		glm::vec3(0.0f, -0.625f, -0.6f),
+		glm::vec3(6.1f, 0.15f, 0.14f),
+		0.0f
+	);
+
+	// Спинка скамейки и ножки 
+	draw_shadow_cube(
+		glm::vec3(-0.8f, -0.035f, -1.28f),
+		glm::vec3(1.35f, 0.5f, 0.1f),
+		0.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(-1.32f, -0.45f, -1.1f),
+		glm::vec3(0.12f, 0.26f, 0.28f),
+		0.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(-0.28f, -0.45f, -1.1f),
+		glm::vec3(0.12f, 0.26f, 0.28f),
+		0.0f
+	);
+
+	// Основание фонаря, столб, кронштейн и корпус 
+	draw_shadow_cube(
+		glm::vec3(1.2f, -0.5f, -1.1f),
+		glm::vec3(0.24f, 0.16f, 0.24f),
+		0.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(1.2f, 0.29f, -1.1f),
+		glm::vec3(0.12f, 1.42f, 0.12f),
+		0.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(0.91f, 0.85f, -1.1f),
+		glm::vec3(0.65f, 0.08f, 0.08f),
+		0.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(0.56f, 0.78f, -1.1f),
+		glm::vec3(0.28f, 0.23f, 0.22f),
+		0.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(0.56f, 0.64f, -1.1f),
+		glm::vec3(0.18f, 0.04f, 0.15f),
+		0.0f
+	);
+
+	vkCmdEndRendering(command_buffer);
+
+	// Переходим в состояние чтнеия шейдером
+	const VkImageMemoryBarrier shadow_to_read_barrier = {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+		.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+		.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+		.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+		.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.image = shadow_map_image,
+		.subresourceRange = {
+			.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1,
+		},
+	};
+
+	vkCmdPipelineBarrier(
+		command_buffer,
+		VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+			VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+		0,
+		0, nullptr,
+		0, nullptr,
+		1, &shadow_to_read_barrier
+	);
+
+	// Карту уже перевели в состояние для чтения
+	shadow_map_initialized = true;
+
+	// Отдельный рендер проход для прожектора
+	const VkPipelineStageFlags spot_shadow_source_stage =
+		spot_shadow_map_initialized
+			? VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+			: VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
+	const VkAccessFlags spot_shadow_source_access =
+		spot_shadow_map_initialized
+			? VK_ACCESS_SHADER_READ_BIT
+			: 0;
+
+	const VkImageLayout spot_shadow_old_layout =
+		spot_shadow_map_initialized
+			? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+			: VK_IMAGE_LAYOUT_UNDEFINED;
+
+	const VkImageMemoryBarrier spot_shadow_to_depth_barrier = {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+		.srcAccessMask = spot_shadow_source_access,
+		.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+		.oldLayout = spot_shadow_old_layout,
+		.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.image = spot_shadow_map_image,
+		.subresourceRange = {
+			.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1,
+		},
+	};
+
+	vkCmdPipelineBarrier(
+		command_buffer,
+		spot_shadow_source_stage,
+		VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+			VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+		0,
+		0, nullptr,
+		0, nullptr,
+		1, &spot_shadow_to_depth_barrier
+	);
+
+	VkRenderingAttachmentInfo spot_shadow_depth_attachment{};
+	spot_shadow_depth_attachment.sType =
+		VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+	spot_shadow_depth_attachment.imageView = spot_shadow_map_view;
+	spot_shadow_depth_attachment.imageLayout =
+		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	spot_shadow_depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	spot_shadow_depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	spot_shadow_depth_attachment.clearValue.depthStencil = {1.0f, 0};
+
+	VkRenderingInfo spot_shadow_rendering_info{};
+	spot_shadow_rendering_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+	spot_shadow_rendering_info.renderArea = {
+		{0, 0},
+		{shadow_map_size, shadow_map_size}
+	};
+	spot_shadow_rendering_info.layerCount = 1;
+	spot_shadow_rendering_info.pDepthAttachment =
+		&spot_shadow_depth_attachment;
+
+	vkCmdBeginRendering(command_buffer, &spot_shadow_rendering_info);
+
+	vkCmdBindPipeline(
+		command_buffer,
+		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		shadow_pipeline
+	);
+
+	vkCmdSetViewport(command_buffer, 0, 1, &shadow_viewport);
+	vkCmdSetScissor(command_buffer, 0, 1, &shadow_scissor);
+	vkCmdSetDepthBias(command_buffer, shadow_depth_bias, 0.0f, shadow_depth_bias);
+
+	vkCmdBindDescriptorSets(
+		command_buffer,
+		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		pipeline_layout,
+		0,
+		1,
+		&scene_descriptor_set,
+		0,
+		nullptr
+	);
+
+	VkDeviceSize spot_shadow_vertex_offset = 0;
+
+	vkCmdBindVertexBuffers(
+		command_buffer,
+		0,
+		1,
+		&vertex_buffer,
+		&spot_shadow_vertex_offset
+	);
+
+	vkCmdBindIndexBuffer(
+		command_buffer,
+		index_buffer,
+		0,
+		VK_INDEX_TYPE_UINT32
+	);
+
+	first_shadow_push.use_spot_shadow = 1.0f;
+
+	vkCmdPushConstants(
+		command_buffer,
+		pipeline_layout,
+		VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+		0,
+		sizeof(ShadowPushConstants),
+		&first_shadow_push
+	);
+
+	vkCmdDrawIndexed(
+		command_buffer,
+		static_cast<uint32_t>(sizeof(indices) / sizeof(indices[0])),
+		1,
+		0,
+		0,
+		0
+	);
+
+	second_shadow_push.use_spot_shadow = 1.0f;
+
+	vkCmdPushConstants(
+		command_buffer,
+		pipeline_layout,
+		VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+		0,
+		sizeof(ShadowPushConstants),
+		&second_shadow_push
+	);
+
+	vkCmdDrawIndexed(
+		command_buffer,
+		static_cast<uint32_t>(sizeof(indices) / sizeof(indices[0])),
+		1,
+		0,
+		0,
+		0
+	);
+
+	// Сиденье скамейки в карте прожектора
+	draw_shadow_cube(
+		glm::vec3(-0.8f, -0.34f, -1.1f),
+		glm::vec3(1.35f, 0.1f, 0.32f),
+		1.0f
+	);
+
+	// Фасад и боковая стена 
+	draw_shadow_cube(
+		glm::vec3(0.0f, 0.45f, -1.85f),
+		glm::vec3(5.8f, 2.3f, 0.15f),
+		1.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(2.82f, 0.45f, -1.85f),
+		glm::vec3(0.16f, 2.3f, 1.5f),
+		1.0f
+	);
+
+	// Дверь и окна 
+	draw_shadow_cube(
+		glm::vec3(0.0f, 0.03f, -1.72f),
+		glm::vec3(0.72f, 1.4f, 0.07f),
+		1.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(-1.35f, 0.75f, -1.72f),
+		glm::vec3(0.9f, 0.72f, 0.08f),
+		1.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(-1.35f, 0.75f, -1.68f),
+		glm::vec3(0.76f, 0.58f, 0.03f),
+		1.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(1.75f, 0.75f, -1.72f),
+		glm::vec3(0.9f, 0.72f, 0.08f),
+		1.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(1.75f, 0.75f, -1.68f),
+		glm::vec3(0.76f, 0.58f, 0.03f),
+		1.0f
+	);
+
+	// Тротуар и бордюр 
+	draw_shadow_cube(
+		glm::vec3(0.0f, -0.64f, -1.1f),
+		glm::vec3(6.0f, 0.12f, 1.0f),
+		1.0f
+	);
+
+	for (float x = -2.4f; x <= 2.4f; x += 0.8f) {
+		draw_shadow_cube(
+			glm::vec3(x, -0.575f, -1.1f),
+			glm::vec3(0.025f, 0.01f, 0.9f),
+			1.0f
+		);
+	}
+
+	draw_shadow_cube(
+		glm::vec3(0.0f, -0.625f, -0.6f),
+		glm::vec3(6.1f, 0.15f, 0.14f),
+		1.0f
+	);
+
+	// Спинка скамейки и ножки в карте прожектора
+	draw_shadow_cube(
+		glm::vec3(-0.8f, -0.035f, -1.28f),
+		glm::vec3(1.35f, 0.5f, 0.1f),
+		1.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(-1.32f, -0.45f, -1.1f),
+		glm::vec3(0.12f, 0.26f, 0.28f),
+		1.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(-0.28f, -0.45f, -1.1f),
+		glm::vec3(0.12f, 0.26f, 0.28f),
+		1.0f
+	);
+
+	// Основание фонаря, столб, кронштейн и корпус 
+	draw_shadow_cube(
+		glm::vec3(1.2f, -0.5f, -1.1f),
+		glm::vec3(0.24f, 0.16f, 0.24f),
+		1.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(1.2f, 0.29f, -1.1f),
+		glm::vec3(0.12f, 1.42f, 0.12f),
+		1.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(0.91f, 0.85f, -1.1f),
+		glm::vec3(0.65f, 0.08f, 0.08f),
+		1.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(0.56f, 0.78f, -1.1f),
+		glm::vec3(0.28f, 0.23f, 0.22f),
+		1.0f
+	);
+
+	draw_shadow_cube(
+		glm::vec3(0.56f, 0.64f, -1.1f),
+		glm::vec3(0.18f, 0.04f, 0.15f),
+		1.0f
+	);
+
+	vkCmdEndRendering(command_buffer);
+
+	const VkImageMemoryBarrier spot_shadow_to_read_barrier = {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+		.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+		.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+		.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+		.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.image = spot_shadow_map_image,
+		.subresourceRange = {
+			.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1,
+		},
+	};
+
+	vkCmdPipelineBarrier(
+		command_buffer,
+		VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+			VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+		0,
+		0, nullptr,
+		0, nullptr,
+		1, &spot_shadow_to_read_barrier
+	);
+
+	spot_shadow_map_initialized = true;
+
     VkClearValue clear_values[2] = {};
 
     clear_values[0].color = {
@@ -3706,6 +4841,201 @@ void render(const graphics::internal::FrameData& fd) {
 		0,
 		0,
 		0
+	);
+
+	auto draw_colored_cube = [&](
+		const glm::vec3& position,
+		const glm::vec3& size,
+		const glm::vec4& color
+	) {
+		VkDeviceSize cube_vertex_offset = 0;
+
+		vkCmdBindVertexBuffers(
+			command_buffer,
+			0,
+			1,
+			&light_visualization_vertex_buffer,
+			&cube_vertex_offset
+		);
+
+		vkCmdBindIndexBuffer(
+			command_buffer,
+			light_visualization_index_buffer,
+			0,
+			VK_INDEX_TYPE_UINT32
+		);
+
+		VisualizationPushConstants cube_data = {
+			glm::translate(glm::mat4(1.0f), position + glm::vec3(0.0f, 0.0f, -0.8f)) *
+				glm::scale(glm::mat4(1.0f), size),
+			color,
+			1.0f,
+			0.0f,
+			0.0f
+		};
+
+		vkCmdPushConstants(
+			command_buffer,
+			pipeline_layout,
+			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+			0,
+			sizeof(VisualizationPushConstants),
+			&cube_data
+		);
+
+		vkCmdDrawIndexed(
+			command_buffer,
+			static_cast<uint32_t>(
+				sizeof(light_visualization_indices) /
+				sizeof(light_visualization_indices[0])
+			),
+			1,
+			0,
+			0,
+			0
+		);
+	};
+
+	// Земля — большая плоская площадка
+	draw_colored_cube(
+		glm::vec3(0.0f, -0.75f, -0.2f),
+		glm::vec3(7.0f, 0.1f, 6.0f),
+		glm::vec4(0.24f, 0.26f, 0.28f, 1.0f)
+	);
+
+	// Фасад — стена вдоль заднего края сцены
+	draw_colored_cube(
+		glm::vec3(0.0f, 0.45f, -1.85f),
+		glm::vec3(5.8f, 2.3f, 0.15f),
+		glm::vec4(0.58f, 0.48f, 0.38f, 1.0f)
+	);
+
+	// Боковая стена здания
+	draw_colored_cube(
+		glm::vec3(2.82f, 0.45f, -1.85f),
+		glm::vec3(0.16f, 2.3f, 1.5f),
+		glm::vec4(0.58f, 0.48f, 0.38f, 1.0f)
+	);
+
+	// Дверь
+	draw_colored_cube(
+		glm::vec3(0.0f, 0.03f, -1.72f),
+		glm::vec3(0.72f, 1.4f, 0.07f),
+		glm::vec4(0.25f, 0.16f, 0.1f, 1.0f)
+	);
+
+	// Тёмная рамка левого окна
+	draw_colored_cube(
+		glm::vec3(-1.35f, 0.75f, -1.72f),
+		glm::vec3(0.9f, 0.72f, 0.08f),
+		glm::vec4(0.15f, 0.18f, 0.2f, 1.0f)
+	);
+
+	// Стекло левого окна
+	draw_colored_cube(
+		glm::vec3(-1.35f, 0.75f, -1.68f),
+		glm::vec3(0.76f, 0.58f, 0.03f),
+		glm::vec4(0.75f, 0.82f, 0.85f, 1.0f)
+	);
+
+	// Тёмная рамка правого окна
+	draw_colored_cube(
+		glm::vec3(1.75f, 0.75f, -1.72f),
+		glm::vec3(0.9f, 0.72f, 0.08f),
+		glm::vec4(0.15f, 0.18f, 0.2f, 1.0f)
+	);
+
+	// Стекло правого окна
+	draw_colored_cube(
+		glm::vec3(1.75f, 0.75f, -1.68f),
+		glm::vec3(0.76f, 0.58f, 0.03f),
+		glm::vec4(0.75f, 0.82f, 0.85f, 1.0f)
+	);
+
+	// Тротуар — полоса перед фасадом
+	draw_colored_cube(
+		glm::vec3(0.0f, -0.64f, -1.1f),
+		glm::vec3(6.0f, 0.12f, 1.0f),
+		glm::vec4(0.42f, 0.43f, 0.44f, 1.0f)
+	);
+
+	// Швы между плитами тротуара
+	for (float x = -2.4f; x <= 2.4f; x += 0.8f) {
+		draw_colored_cube(
+			glm::vec3(x, -0.575f, -1.1f),
+			glm::vec3(0.025f, 0.01f, 0.9f),
+			glm::vec4(0.28f, 0.29f, 0.3f, 1.0f)
+		);
+	}
+
+	// Бордюр вдоль края тротуара
+	draw_colored_cube(
+		glm::vec3(0.0f, -0.625f, -0.6f),
+		glm::vec3(6.1f, 0.15f, 0.14f),
+		glm::vec4(0.22f, 0.23f, 0.24f, 1.0f)
+	);
+
+	// Сиденье
+	draw_colored_cube(
+		glm::vec3(-0.8f, -0.34f, -1.1f),
+		glm::vec3(1.35f, 0.1f, 0.32f),
+		glm::vec4(0.42f, 0.22f, 0.1f, 1.0f)
+	);
+
+	// Спинка — поставлена у заднего края сиденья
+	draw_colored_cube(
+		glm::vec3(-0.8f, -0.035f, -1.28f),
+		glm::vec3(1.35f, 0.5f, 0.1f),
+		glm::vec4(0.42f, 0.22f, 0.1f, 1.0f)
+	);
+
+	// Левая ножка
+	draw_colored_cube(
+		glm::vec3(-1.32f, -0.45f, -1.1f),
+		glm::vec3(0.12f, 0.26f, 0.28f),
+		glm::vec4(0.25f, 0.14f, 0.08f, 1.0f)
+	);
+
+	// Правая ножка
+	draw_colored_cube(
+		glm::vec3(-0.28f, -0.45f, -1.1f),
+		glm::vec3(0.12f, 0.26f, 0.28f),
+		glm::vec4(0.25f, 0.14f, 0.08f, 1.0f)
+	);
+
+	// Основание фонаря
+	draw_colored_cube(
+		glm::vec3(1.2f, -0.5f, -1.1f),
+		glm::vec3(0.24f, 0.16f, 0.24f),
+		glm::vec4(0.18f, 0.19f, 0.2f, 1.0f)
+	);
+
+	// Вертикальный столб
+	draw_colored_cube(
+		glm::vec3(1.2f, 0.29f, -1.1f),
+		glm::vec3(0.12f, 1.42f, 0.12f),
+		glm::vec4(0.12f, 0.14f, 0.16f, 1.0f)
+	);
+
+	// Кронштейн, который держит лампу
+	draw_colored_cube(
+		glm::vec3(0.91f, 0.85f, -1.1f),
+		glm::vec3(0.65f, 0.08f, 0.08f),
+		glm::vec4(0.12f, 0.14f, 0.16f, 1.0f)
+	);
+
+	// Корпус фонаря
+	draw_colored_cube(
+		glm::vec3(0.56f, 0.78f, -1.1f),
+		glm::vec3(0.28f, 0.23f, 0.22f),
+		glm::vec4(0.16f, 0.18f, 0.2f, 1.0f)
+	);
+
+	// Светящаяся часть
+	draw_colored_cube(
+		glm::vec3(0.56f, 0.64f, -1.1f),
+		glm::vec3(0.18f, 0.04f, 0.15f),
+		glm::vec4(1.0f, 0.75f, 0.25f, 1.0f)
 	);
 
 	if (show_light_visualization) {
